@@ -1,5 +1,10 @@
 // TypeScript interfaces for Google Calendar data structures
 
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+// Define the type for individual content items from CallToolResult
+type CallToolResultContentItem = NonNullable<CallToolResult['content']>[number];
+
 export interface CalendarListEntry {
   id?: string | null;
   summary?: string | null;
@@ -59,3 +64,23 @@ export interface FreeBusyResponse {
     };
   };
 }
+
+// Streaming-related types and interfaces
+
+/**
+ * A chunk of streaming response data
+ */
+export interface StreamingChunk {
+  content: CallToolResultContentItem[];
+  
+  // Optional metadata about streaming progress
+  meta?: {
+    progress?: number; // 0-100
+    isLast?: boolean;
+  };
+}
+
+/**
+ * Type for streaming callback function
+ */
+export type StreamCallback = (chunk: StreamingChunk) => void;
