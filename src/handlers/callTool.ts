@@ -1,4 +1,5 @@
 import { CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResultContentItem } from "../schemas/types.js";
 import { OAuth2Client } from 'google-auth-library';
 import { BaseToolHandler } from "./core/BaseToolHandler.js";
 import { ListCalendarsHandler } from "./core/ListCalendarsHandler.js";
@@ -10,56 +11,45 @@ import { UpdateEventHandler } from "./core/UpdateEventHandler.js";
 import { DeleteEventHandler } from "./core/DeleteEventHandler.js";
 import { FreeBusyEventHandler } from "./core/FreeBusyEventHandler.js";
 import { StreamCallback } from "../schemas/types.js";
+import { StreamingChunk } from "../schemas/types.js";
 
 /**
- * Handles incoming tool calls, validates arguments, calls the appropriate service,
- * and formats the response.
+ * Executes a tool call with support for both synchronous and streaming responses.
+ * 
+ * For streaming responses, this function handles the initial request and delegates
+ * to the appropriate handler's streaming implementation. The handler will then use
+ * the provided callback to send data chunks as they become available.
  *
- * @param request The CallToolRequest containing tool name and arguments.
- * @param oauth2Client The authenticated OAuth2 client instance.
- * @param streamMode Whether to use streaming mode
- * @param streamCallback Callback function for streaming responses (required if streamMode is true)
- * @param progressToken Optional progress token for streaming (required if streamMode is true)
- * @returns A Promise resolving to the CallToolResponse.
+ * @param request The tool request containing name and arguments
+ * @param oauth2Client An authenticated OAuth2 client for Google APIs
+ * @param extra Additional context from the request handler
+ * @param transportStreamCallback Optional callback for streaming data chunks
+ * @param explicitProgressToken Optional token to identify a streaming session
+ * @returns A Promise resolving to the tool execution result
  */
 export async function handleCallTool(
-    request: typeof CallToolRequestSchema._type, 
+    request: typeof CallToolRequestSchema._type,
     oauth2Client: OAuth2Client,
-    streamMode: boolean = false,
-    streamCallback?: StreamCallback,
-    progressToken?: string
+    extra: any,
+    transportStreamCallback?: (partialResult: { progressToken: string | number; content?: CallToolResultContentItem[]; _meta?: any }) => void,
+    explicitProgressToken?: string | number
 ): Promise<CallToolResult> {
     const { name, arguments: args } = request.params;
 
     try {
         const handler = getHandler(name);
-        
-        if (streamMode && streamCallback && progressToken) {
-            // Execute the streaming tool logic. It will use the streamCallback to send chunks.
-            // The streamCallback (wrappedCallback from index.ts) is responsible for using the progressToken.
-            await handler.runToolStreaming(args, oauth2Client, streamCallback);
-            
-            // Return an initial response indicating streaming has started, using the provided progressToken
-            return {
-                content: [{
-                    type: "text",
-                    text: "Streaming response initiated. Waiting for partial results..."
-                }],
-                _meta: {
-                    streaming: true,
-                    progressToken: progressToken
-                }
-            };
-        } else if (streamMode) {
-            // This case should ideally not happen if called correctly from index.ts
-            throw new Error("Stream mode requires a streamCallback and progressToken.");
-        } else {
-            // Use traditional mode
-            return await handler.runTool(args, oauth2Client);
+
+        if (transportStreamCallback && explicitProgressToken && typeof handler.runToolStreaming === 'function') {
+            // Execute in streaming mode when all required parameters are present
+            // The handler will send partial results through the callback as they become available
+            // and return an initial response to indicate streaming has started
+            return await handler.runToolStreaming(args, oauth2Client, extra, transportStreamCallback, explicitProgressToken);
         }
+        // Fallback to traditional synchronous execution when streaming parameters are missing
+        return await handler.runTool(args, oauth2Client);
     } catch (error: unknown) {
         process.stderr.write(`[ERROR] Error executing tool '${name}': ${error}\n`);
-        throw error;
+        throw error; // Re-throw so the MCP server can convert it to a proper JSON-RPC error response
     }
 }
 

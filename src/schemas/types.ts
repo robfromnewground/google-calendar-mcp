@@ -3,7 +3,7 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Define the type for individual content items from CallToolResult
-type CallToolResultContentItem = NonNullable<CallToolResult['content']>[number];
+export type CallToolResultContentItem = NonNullable<CallToolResult['content']>[number];
 
 export interface CalendarListEntry {
   id?: string | null;
@@ -65,22 +65,32 @@ export interface FreeBusyResponse {
   };
 }
 
-// Streaming-related types and interfaces
+/**
+ * MCP Streaming-related types and interfaces
+ */
 
 /**
- * A chunk of streaming response data
+ * Represents a chunk of data sent during progressive streaming.
+ * Used to provide partial results during long-running operations.
+ *
+ * @property content - The actual content items to be displayed
+ * @property meta - Optional metadata about the streaming progress
  */
 export interface StreamingChunk {
   content: CallToolResultContentItem[];
   
-  // Optional metadata about streaming progress
+  // Metadata about streaming progress
   meta?: {
-    progress?: number; // 0-100
-    isLast?: boolean;
+    progress?: number; // 0-100 representing completion percentage
+    isLast?: boolean;  // Whether this is the final chunk in the stream
+    error?: boolean;   // Whether this chunk represents an error state
   };
 }
 
 /**
- * Type for streaming callback function
+ * Callback function type for sending streaming chunks to clients.
+ * Handlers invoke this callback to send partial results during streaming operations.
+ *
+ * @param chunk - The data chunk to send in the stream
  */
 export type StreamCallback = (chunk: StreamingChunk) => void;
