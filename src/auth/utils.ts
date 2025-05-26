@@ -60,7 +60,7 @@ export function generateCredentialsErrorMessage(): string {
 OAuth credentials not found. Please provide credentials using one of these methods:
 
 1. CLI parameter:
-   npx @shdennlin/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
+   npx @nspady/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
 
 2. Environment variable:
    Set GOOGLE_OAUTH_CREDENTIALS_FILE to the path of your credentials file:

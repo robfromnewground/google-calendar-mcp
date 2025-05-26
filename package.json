@@ -1,5 +1,5 @@
 {
-  "name": "@shdennlin/google-calendar-mcp",
+  "name": "@nspady/google-calendar-mcp",
   "version": "1.2.0-beta.0",
   "description": "Google Calendar MCP Server for Claude Desktop - Integrate with Google Calendar API",
   "type": "module",
@@ -23,13 +23,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shdennlin/google-calendar-mcp.git"
+    "url": "git+https://github.com/nspady/google-calendar-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/shdennlin/google-calendar-mcp/issues"
+    "url": "https://github.com/nspady/google-calendar-mcp/issues"
   },
-  "homepage": "https://github.com/shdennlin/google-calendar-mcp#readme",
-  "author": "shdennlin",
+  "homepage": "https://github.com/nspady/google-calendar-mcp#readme",
+  "author": "nspady",
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit",
