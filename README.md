@@ -48,6 +48,61 @@ Along with the normal capabilities you would expect for a calendar integration y
 3. A Google Cloud project with the Calendar API enabled
 4. OAuth 2.0 credentials (Client ID and Client Secret)
 
+## Installation
+
+### Option 1: Use with npx (Recommended)
+
+1. **Add to Claude Desktop**: Edit your Claude Desktop configuration file:
+   
+   **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+   ```json
+   {
+     "mcpServers": {
+       "google-calendar": {
+         "command": "npx",
+         "args": ["@shdennlin/google-calendar-mcp", "start"]
+       }
+     }
+   }
+   ```
+
+2. **Restart Claude Desktop**
+
+3. **First time setup**: Authenticate with Google by running:
+   ```bash
+   npx @shdennlin/google-calendar-mcp auth
+   ```
+
+### Option 2: Local Installation
+
+1. Clone the repository
+2. Install dependencies (this also builds the js via postinstall):
+   ```bash
+   git clone https://github.com/shdennlin/google-calendar-mcp.git
+   cd google-calendar-mcp
+   npm install
+   ```
+3. Download your Google OAuth credentials from the Google Cloud Console (under "Credentials") and rename the file to `gcp-oauth.keys.json` and place it in the root directory of the project.
+   - Ensure the file contains credentials for a "Desktop app".
+   - Alternatively, copy the provided template file: `cp gcp-oauth.keys.example.json gcp-oauth.keys.json` and populate it with your credentials from the Google Cloud Console.
+
+4. Add this configuration to your Claude Desktop config file:
+   ```json
+   {
+     "mcpServers": {
+       "google-calendar": {
+         "command": "node",
+         "args": ["<absolute-path-to-project-folder>/build/index.js"]
+       }
+     }
+   }
+   ```
+   Note: Replace `<absolute-path-to-project-folder>` with the actual path to your project directory.
+
+5. Restart Claude Desktop
+
 ## Google Cloud Setup
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com)
@@ -64,17 +119,6 @@ Along with the normal capabilities you would expect for a calendar integration y
    - Add your email address as a test user under the [OAuth Consent screen](https://console.cloud.google.com/apis/credentials/consent)
       - Note: it will take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
       - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week and need to be refreshed by running `npm run auth`.
-
-## Installation
-
-1. Clone the repository
-2. Install dependencies (this also builds the js via postinstall):
-   ```bash
-   npm install
-   ```
-3. Download your Google OAuth credentials from the Google Cloud Console (under "Credentials") and rename the file to `gcp-oauth.keys.json` and place it in the root directory of the project.
-   - Ensure the file contains credentials for a "Desktop app".
-   - Alternatively, copy the provided template file: `cp gcp-oauth.keys.example.json gcp-oauth.keys.json` and populate it with your credentials from the Google Cloud Console.
 
 ## Available Scripts
 
@@ -137,24 +181,6 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
 - OAuth credentials (`gcp-oauth.keys.json`) and saved tokens (`.gcp-saved-tokens.json`) should **never** be committed to version control. Ensure they are added to your `.gitignore` file.
 - For production use, consider getting your OAuth application verified by Google.
 
-## Usage with Claude Desktop
-
-1. Add this configuration to your Claude Desktop config file. E.g. `/Users/<user>/Library/Application Support/Claude/claude_desktop_config.json`:
-   ```json
-   {
-     "mcpServers": {
-       "google-calendar": {
-         "command": "node",
-         "args": ["<absolute-path-to-project-folder>/build/index.js"]
-       }
-     }
-   }
-   ```
-   Note: Replace `<absolute-path-to-project-folder>` with the actual path to your project directory.
-
-2. Restart Claude Desktop
-
-
 ## Development
 
 ### Troubleshooting
@@ -174,7 +200,7 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
    - Check Node.js version (use LTS).
    - Delete the `build/` directory and run `npm run build`.
 
-if you are a developer want to contribute this repository, please kindly take a look at [Architecture Overview](docs/architecture.md) before contributing
+If you are a developer want to contribute this repository, please kindly take a look at [Architecture Overview](docs/architecture.md) before contributing
 
 ## License
 
