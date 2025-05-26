@@ -13,6 +13,7 @@ import { AuthServer } from './auth/server.js';
 import { TokenManager } from './auth/tokenManager.js';
 import { getToolDefinitions } from './handlers/listTools.js';
 import { handleCallTool } from './handlers/callTool.js';
+import { setCredentialsPath } from './auth/utils.js';
 
 // --- Global Variables --- 
 // Create server instance (global for export)
@@ -142,17 +143,24 @@ function showHelp(): void {
 Google Calendar MCP Server
 
 Usage:
-  npx @shdennlin/google-calendar-mcp [command]
+  npx @shdennlin/google-calendar-mcp [command] [options]
 
 Commands:
   auth     Run the authentication flow
   start    Start the MCP server (default)
   help     Show this help message
 
+Options:
+  --credentials-file <path>    Path to OAuth credentials file
+
 Examples:
   npx @shdennlin/google-calendar-mcp auth
-  npx @shdennlin/google-calendar-mcp start
+  npx @shdennlin/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
+  npx @shdennlin/google-calendar-mcp start --credentials-file ./my-credentials.json
   npx @shdennlin/google-calendar-mcp
+
+Environment Variables:
+  GOOGLE_OAUTH_CREDENTIALS_FILE    Path to OAuth credentials file
 `);
 }
 
@@ -160,8 +168,44 @@ Examples:
 // Export server and main for testing or potential programmatic use
 export { main, server, runAuthServer };
 
+// Parse CLI arguments for credentials
+function parseCliArgs(): { command: string | undefined; credentialsPath: string | undefined } {
+  const args = process.argv.slice(2);
+  let command: string | undefined;
+  let credentialsPath: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    // Check for command (first non-option argument)
+    if (!command && !arg.startsWith('--')) {
+      command = arg;
+      continue;
+    }
+    
+    // Check for credentials file option
+    if (arg === '--credentials-file') {
+      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+        credentialsPath = args[i + 1];
+        i++; // Skip the next argument as it's the value
+      } else {
+        console.error(`Option ${arg} requires a value`);
+        process.exit(1);
+      }
+    }
+  }
+
+  return { command, credentialsPath };
+}
+
 // CLI logic here (run always)
-const command = process.argv[2];
+const { command, credentialsPath } = parseCliArgs();
+
+// Set credentials path if provided via CLI
+if (credentialsPath) {
+  setCredentialsPath(credentialsPath);
+}
+
 switch (command) {
   case "auth":
     runAuthServer().catch((error) => {
