@@ -152,7 +152,7 @@ function showHelp(): void {
 Google Calendar MCP Server v${VERSION}
 
 Usage:
-  npx @shdennlin/google-calendar-mcp [command] [options]
+  npx @nspady/google-calendar-mcp [command] [options]
 
 Commands:
   auth     Run the authentication flow
@@ -164,11 +164,11 @@ Options:
   --credentials-file <path>    Path to OAuth credentials file
 
 Examples:
-  npx @shdennlin/google-calendar-mcp auth
-  npx @shdennlin/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
-  npx @shdennlin/google-calendar-mcp start --credentials-file ./my-credentials.json
-  npx @shdennlin/google-calendar-mcp version
-  npx @shdennlin/google-calendar-mcp
+  npx @nspady/google-calendar-mcp auth
+  npx @nspady/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
+  npx @nspady/google-calendar-mcp start --credentials-file ./my-credentials.json
+  npx @nspady/google-calendar-mcp version
+  npx @nspady/google-calendar-mcp
 
 Environment Variables:
   GOOGLE_OAUTH_CREDENTIALS_FILE    Path to OAuth credentials file

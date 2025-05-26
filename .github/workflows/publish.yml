@@ -101,16 +101,16 @@ jobs:
           body: |
             ## Changes in this Release
             
-            - Package published to npm as `@shdennlin/google-calendar-mcp@${{ steps.package-version.outputs.version }}`
-            - Can be installed with: `npx @shdennlin/google-calendar-mcp@${{ steps.package-version.outputs.version }}`
+            - Package published to npm as `@nspady/google-calendar-mcp@${{ steps.package-version.outputs.version }}`
+            - Can be installed with: `npx @nspady/google-calendar-mcp@${{ steps.package-version.outputs.version }}`
             
             ### Installation
             ```bash
             # Install globally
-            npm install -g @shdennlin/google-calendar-mcp@${{ steps.package-version.outputs.version }}
+            npm install -g @nspady/google-calendar-mcp@${{ steps.package-version.outputs.version }}
             
             # Run directly with npx
-            npx @shdennlin/google-calendar-mcp@${{ steps.package-version.outputs.version }}
+            npx @nspady/google-calendar-mcp@${{ steps.package-version.outputs.version }}
             ```
             
             See the [CHANGELOG](CHANGELOG.md) for detailed changes.
