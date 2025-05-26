@@ -6,6 +6,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { OAuth2Client } from "google-auth-library";
 import { fileURLToPath } from "url";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
 
 // Import modular components
 import { initializeOAuth2Client } from './auth/client.js';
@@ -15,12 +17,19 @@ import { getToolDefinitions } from './handlers/listTools.js';
 import { handleCallTool } from './handlers/callTool.js';
 import { setCredentialsPath } from './auth/utils.js';
 
+// Get package version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, '..', 'package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+const VERSION = packageJson.version;
+
 // --- Global Variables --- 
 // Create server instance (global for export)
 const server = new Server(
   {
     name: "google-calendar",
-    version: "1.2.0",
+    version: VERSION,
   },
   {
     capabilities: {
@@ -140,7 +149,7 @@ async function runAuthServer(): Promise<void> {
 
 function showHelp(): void {
   console.log(`
-Google Calendar MCP Server
+Google Calendar MCP Server v${VERSION}
 
 Usage:
   npx @shdennlin/google-calendar-mcp [command] [options]
@@ -148,6 +157,7 @@ Usage:
 Commands:
   auth     Run the authentication flow
   start    Start the MCP server (default)
+  version  Show version information
   help     Show this help message
 
 Options:
@@ -157,11 +167,16 @@ Examples:
   npx @shdennlin/google-calendar-mcp auth
   npx @shdennlin/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
   npx @shdennlin/google-calendar-mcp start --credentials-file ./my-credentials.json
+  npx @shdennlin/google-calendar-mcp version
   npx @shdennlin/google-calendar-mcp
 
 Environment Variables:
   GOOGLE_OAUTH_CREDENTIALS_FILE    Path to OAuth credentials file
 `);
+}
+
+function showVersion(): void {
+  console.log(`Google Calendar MCP Server v${VERSION}`);
 }
 
 // --- Exports & Execution Guard --- 
@@ -176,6 +191,12 @@ function parseCliArgs(): { command: string | undefined; credentialsPath: string 
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    
+    // Handle special version/help flags as commands
+    if (arg === '--version' || arg === '-v' || arg === '--help' || arg === '-h') {
+      command = arg;
+      continue;
+    }
     
     // Check for command (first non-option argument)
     if (!command && !arg.startsWith('--')) {
@@ -218,6 +239,11 @@ switch (command) {
     main().catch(() => {
       process.exit(1);
     });
+    break;
+  case "version":
+  case "--version":
+  case "-v":
+    showVersion();
     break;
   case "help":
   case "--help":
