@@ -1,7 +1,7 @@
 {
-  "name": "google-calendar-mcp",
-  "version": "1.2.0",
-  "description": "Google Calendar MCP Server",
+  "name": "@shdennlin/google-calendar-mcp",
+  "version": "1.2.0-beta.0",
+  "description": "Google Calendar MCP Server for Claude Desktop - Integrate with Google Calendar API",
   "type": "module",
   "bin": {
     "google-calendar-mcp": "./build/index.js"
