@@ -12,17 +12,28 @@ export const RemindersSchema = z.object({
   overrides: z.array(ReminderSchema).optional(),
 });
 
-// ISO datetime regex that requires timezone designator (Z or +/-HH:MM)
-const isoDateTimeWithTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/;
+// ISO datetime regex that requires timezone designator (Z or +/-HH:MM), with optional milliseconds
+const isoDateTimeWithTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+
+// Enhanced datetime validation with better error handling
+const dateTimeValidator = z.string().refine((val) => {
+  // First check if it's a string
+  if (typeof val !== 'string') {
+    return false;
+  }
+  // Then check the regex
+  return isoDateTimeWithTimezone.test(val);
+}, {
+  message: "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00+00:00)"
+});
 
 export const ListEventsArgumentsSchema = z.object({
-  calendarId: z.string(),
-  timeMin: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
-  timeMax: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-12-31T23:59:59Z)")
-    .optional(),
+  calendarId: z.string().optional(),
+  calendarIds: z.array(z.string()).optional(),
+  timeMin: dateTimeValidator.optional(),
+  timeMax: dateTimeValidator.optional(),
+}).refine(data => data.calendarId || (data.calendarIds && data.calendarIds.length > 0), {
+  message: 'Either calendarId or calendarIds must be provided',
 });
 
 export const SearchEventsArgumentsSchema = z.object({

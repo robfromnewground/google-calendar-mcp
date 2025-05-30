@@ -47,13 +47,18 @@ export function getToolDefinitions() {
       },
       {
         name: "list-events",
-        description: "List events from a calendar",
+        description: "List events from one or more calendars",
         inputSchema: {
           type: "object",
           properties: {
             calendarId: {
               type: "string",
               description: "ID of the calendar to list events from (use 'primary' for the main calendar)",
+            },
+            calendarIds: {
+              type: "array",
+              items: { type: "string" },
+              description: "Optional array of calendar IDs to list events from",
             },
             timeMin: {
               type: "string",
@@ -66,7 +71,7 @@ export function getToolDefinitions() {
               description: "End time in ISO format with timezone required (e.g., 2024-12-31T23:59:59Z or 2024-12-31T23:59:59+00:00). Date-time must end with Z (UTC) or +/-HH:MM offset.",
             },
           },
-          required: ["calendarId"],
+          required: [],
         },
       },
       {

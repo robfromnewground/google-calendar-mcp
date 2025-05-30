@@ -76,14 +76,21 @@ vi.mock('./auth/tokenManager.js', () => ({
 }));
 
 // Mock OAuth2Client
+const createdOAuthClients: any[] = [];
 vi.mock('google-auth-library', () => ({
-    OAuth2Client: vi.fn().mockImplementation(() => ({
-        setCredentials: vi.fn(),
-        refreshAccessToken: vi.fn().mockResolvedValue({ credentials: { access_token: 'mock_access_token' } }),
-        on: vi.fn(),
-        generateAuthUrl: vi.fn().mockReturnValue('http://mockauthurl.com'),
-        getToken: vi.fn().mockResolvedValue({ tokens: { access_token: 'mock_access_token' } }),
-    }))
+    OAuth2Client: vi.fn().mockImplementation(() => {
+        const instance = {
+            setCredentials: vi.fn(),
+            refreshAccessToken: vi.fn().mockResolvedValue({ credentials: { access_token: 'mock_access_token' } }),
+            on: vi.fn(),
+            generateAuthUrl: vi.fn().mockReturnValue('http://mockauthurl.com'),
+            getToken: vi.fn().mockResolvedValue({ tokens: { access_token: 'mock_access_token' } }),
+            getRequestHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer mock' }),
+            request: vi.fn(),
+        };
+        createdOAuthClients.push(instance);
+        return instance;
+    })
 }));
 
 // Mock utils
@@ -134,6 +141,7 @@ const server = indexModule.server as unknown as MCPServerType & { capturedHandle
 describe('Google Calendar MCP Tool Calls', () => {
   let mockCalendarApi: ReturnType<GoogleApis['calendar']>;
   let callToolHandler: ((request: any) => Promise<any>) | null = null;
+  let oauthClient: any = null;
 
   beforeAll(async () => {
     // Reset mocks that might have been called during import
@@ -168,6 +176,8 @@ describe('Google Calendar MCP Tool Calls', () => {
         console.error('capturedHandlerMap on server instance:', server?.capturedHandlerMap);
         throw new Error('CallTool handler not captured from server instance after main run.');
     }
+
+    oauthClient = createdOAuthClients[0];
   });
 
   beforeEach(() => {
@@ -184,6 +194,11 @@ describe('Google Calendar MCP Tool Calls', () => {
     (fs.access as ReturnType<typeof vi.fn>).mockResolvedValue(true); // Assume token file access ok
     // readFile needs to be mocked specifically if a test case needs it beyond initialization
     (fs.readFile as ReturnType<typeof vi.fn>).mockClear(); // Clear initial readFile mocks
+
+    if (oauthClient) {
+      (oauthClient.request as ReturnType<typeof vi.fn>).mockReset();
+      (oauthClient.getRequestHeaders as ReturnType<typeof vi.fn>).mockReset();
+    }
   });
 
   it('should reject if authentication is invalid (simulated)', async () => {
@@ -354,6 +369,34 @@ describe('Google Calendar MCP Tool Calls', () => {
         expect(result.content[0].text).toContain('Meeting (event1)');
         expect(result.content[0].text).toContain('Lunch (event2)');
         expect(result.content[0].text).toContain('Location: Cafe');
+    });
+
+    it('should handle "list-events" for multiple calendars using batch', async () => {
+        const listArgs = {
+            calendarIds: ['cal1', 'cal2'],
+            timeMin: '2024-08-01T00:00:00Z',
+            timeMax: '2024-08-31T23:59:59Z',
+        };
+
+        const boundary = 'batch_mock';
+        const batchResponse = `--${boundary}\nContent-Type: application/http\nContent-ID: 1\n\nHTTP/1.1 200 OK\nContent-Type: application/json; charset=UTF-8\n\n{"items":[{"id":"e1","summary":"A"}]}\n--${boundary}\nContent-Type: application/http\nContent-ID: 2\n\nHTTP/1.1 200 OK\nContent-Type: application/json; charset=UTF-8\n\n{"items":[{"id":"e2","summary":"B"}]}\n--${boundary}--`;
+
+        (oauthClient.request as ReturnType<typeof vi.fn>).mockResolvedValue({ data: batchResponse });
+        (oauthClient.getRequestHeaders as ReturnType<typeof vi.fn>).mockResolvedValue({ Authorization: 'Bearer mock' });
+
+        const request = {
+            params: {
+                name: 'list-events',
+                arguments: listArgs,
+            }
+        };
+
+        if (!callToolHandler) throw new Error('callToolHandler not captured');
+        const result = await callToolHandler(request);
+
+        expect(oauthClient.request).toHaveBeenCalled();
+        expect(result.content[0].text).toContain('A (e1)');
+        expect(result.content[0].text).toContain('B (e2)');
     });
 
     it('should handle "search-events" tool call', async () => {
