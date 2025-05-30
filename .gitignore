@@ -5,3 +5,5 @@ gcp-oauth.keys.json
 .gcp-saved-tokens.json
 coverage/
 .nyc_output/
+settings.local.json
+CLAUDE.md
