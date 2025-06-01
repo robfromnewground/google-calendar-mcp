@@ -48,6 +48,23 @@ Along with the normal capabilities you would expect for a calendar integration y
 3. A Google Cloud project with the Calendar API enabled
 4. OAuth 2.0 credentials (Client ID and Client Secret)
 
+## Google Cloud Setup
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select an existing one.
+3. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) for your project. Ensure that the right project is selected from the top bar before enabling the API.
+4. Create OAuth 2.0 credentials:
+   - Go to Credentials
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "User data" for the type of data that the app will be accessing
+   - Add your app name and contact information
+   - Add the following scopes (optional):
+     - `https://www.googleapis.com/auth/calendar.events` (or broader `https://www.googleapis.com/auth/calendar` if needed)
+   - Select "Desktop app" as the application type (Important!)
+   - Add your email address as a test user under the [OAuth Consent screen](https://console.cloud.google.com/apis/credentials/consent)
+      - Note: it will take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
+      - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week and need to be refreshed by running `npm run auth`.
+
 ## Installation
 
 ### Option 1: Use with npx (Recommended)
@@ -175,23 +192,6 @@ Along with the normal capabilities you would expect for a calendar integration y
    Note: Replace `<absolute-path-to-project-folder>` with the actual path to your project directory.
 
 5. Restart Claude **Desktop**
-
-## Google Cloud Setup
-
-1. Go to the [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select an existing one.
-3. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) for your project. Ensure that the right project is selected from the top bar before enabling the API.
-4. Create OAuth 2.0 credentials:
-   - Go to Credentials
-   - Click "Create Credentials" > "OAuth client ID"
-   - Choose "User data" for the type of data that the app will be accessing
-   - Add your app name and contact information
-   - Add the following scopes (optional):
-     - `https://www.googleapis.com/auth/calendar.events` (or broader `https://www.googleapis.com/auth/calendar` if needed)
-   - Select "Desktop app" as the application type (Important!)
-   - Add your email address as a test user under the [OAuth Consent screen](https://console.cloud.google.com/apis/credentials/consent)
-      - Note: it will take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
-      - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week and need to be refreshed by running `npm run auth`.
 
 ## Available Scripts
 
