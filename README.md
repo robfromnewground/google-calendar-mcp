@@ -69,23 +69,14 @@ Along with the normal capabilities you would expect for a calendar integration y
 
 ### Option 1: Use with npx (Recommended)
 
+**Important**: When using npx, you **must** specify the credentials file path using either the `--credentials-file` parameter or the `GOOGLE_OAUTH_CREDENTIALS_FILE` environment variable.
+
 1. **Add to Claude Desktop**: Edit your Claude Desktop configuration file:
    
    **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-   ```json
-   {
-     "mcpServers": {
-       "google-calendar": {
-         "command": "npx",
-         "args": ["@nspady/google-calendar-mcp", "start"]
-       }
-     }
-   }
-   ```
-
-   **Alternative with custom credentials file path**:
+   **Method A: Using --credentials-file parameter (Recommended)**:
    ```json
    {
      "mcpServers": {
@@ -97,7 +88,7 @@ Along with the normal capabilities you would expect for a calendar integration y
    }
    ```
 
-   **Alternative with environment variable**:
+   **Method B: Using environment variable**:
    ```json
    {
      "mcpServers": {
@@ -113,16 +104,6 @@ Along with the normal capabilities you would expect for a calendar integration y
    ```
 
 2. **Restart Claude Desktop**
-
-3. **First time setup**: Authenticate with Google by running:
-   ```bash
-   npx @nspady/google-calendar-mcp auth
-   ```
-   
-   **With custom credentials file**:
-   ```bash
-   npx @nspady/google-calendar-mcp auth --credentials-file /path/to/your/gcp-oauth.keys.json
-   ```
 
 ### Option 2: Local Installation
 
@@ -247,7 +228,7 @@ Place your OAuth credentials file as `gcp-oauth.keys.json` in the current workin
 
 Choose one of these configuration methods based on your preference:
 
-**Option A: Using CLI Parameter**
+**Option A: Using CLI Parameter (Recommended for npx)**
 ```json
 {
   "mcpServers": {
@@ -279,18 +260,7 @@ Choose one of these configuration methods based on your preference:
 }
 ```
 
-**Option C: Default File (Legacy)**
-```json
-{
-  "mcpServers": {
-    "google-calendar": {
-      "command": "npx",
-      "args": ["@nspady/google-calendar-mcp", "start"]
-    }
-  }
-}
-```
-*Note: With this option, ensure `gcp-oauth.keys.json` exists in the npm cache directory where the package is installed.*
+**⚠️ Important Note for npx Users**: When using npx, you **must** specify the credentials file path using either Option A (CLI parameter) or Option B (environment variable). The default file location method is not reliable with npx installations due to package caching behavior.
 
 ## Authentication
 
@@ -376,9 +346,11 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
 
 1. **OAuth Credentials File Not Found (ENOENT Error):**
    
-   If you see an error like `ENOENT: no such file or directory, open 'gcp-oauth.keys.json'`, the server cannot find your OAuth credentials file. Here are your options:
+   If you see an error like `ENOENT: no such file or directory, open 'gcp-oauth.keys.json'`, the server cannot find your OAuth credentials file.
 
-   **Option A: Use CLI Parameter (Recommended)**
+   **⚠️ For npx users**: You **must** specify the credentials file path - the default file location method is not reliable with npx. Use one of these options:
+
+   **Option A: Use CLI Parameter (Recommended for npx)**
    ```bash
    # For authentication
    npx @nspady/google-calendar-mcp auth --credentials-file /path/to/your/credentials.json
@@ -413,10 +385,7 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
    }
    ```
 
-   **Option C: Place in Default Location**
-   - Find where npx installs the package by running: `npm list -g @nspady/google-calendar-mcp`
-   - Place your `gcp-oauth.keys.json` file in that directory
-   - Note: This method may require re-copying the file when the package updates
+   **For local installations only**: You can place `gcp-oauth.keys.json` in the project root directory.
 
 2. **Authentication Errors / Connection Reset on Callback:**
    - Ensure your credentials file contains credentials for a **Desktop App** type.
