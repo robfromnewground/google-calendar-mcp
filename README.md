@@ -9,6 +9,24 @@ This is a Model Context Protocol (MCP) server that provides integration with Goo
 - **Recurring Events**: Advanced modification scopes for recurring events (single instance, all instances, or future instances only)
 - **Calendar Management**: List calendars and their properties
 - **Free/Busy Queries**: Check availability across calendars
+- **Dual Transport Support**: Both stdio (local) and HTTP (remote) transports
+- **Remote Deployment**: Can be deployed as a web service for remote access
+
+## Transport Modes
+
+### stdio Transport (Local Use)
+The default mode for local development and Claude Desktop integration.
+
+### HTTP Transport (Remote Use)
+Enables remote deployment and access via HTTP with Server-Sent Events (SSE).
+
+**Key Features:**
+- ✅ **Session Management**: Secure session-based connections
+- ✅ **CORS Support**: Configurable cross-origin access
+- ✅ **Rate Limiting**: Built-in protection against abuse
+- ✅ **Origin Validation**: Security against DNS rebinding attacks
+- ✅ **Health Monitoring**: Health check and info endpoints
+- ✅ **Graceful Shutdown**: Proper cleanup of resources
 
 ## Example Usage
 
@@ -80,11 +98,36 @@ Along with the normal capabilities you would expect for a calendar integration y
 
 - `npm run build` - Build the TypeScript code (compiles `src` to `build`)
 - `npm run typecheck` - Run TypeScript type checking without compiling
-- `npm run start` - Start the compiled MCP server (using `node build/index.js`)
+- `npm run start` - Start the MCP server in stdio mode (default)
+- `npm run start:http` - Start the MCP server in HTTP mode on localhost:3000
+- `npm run start:http:remote` - Start the MCP server in HTTP mode accessible from any host
 - `npm run auth` - Manually run the Google OAuth authentication flow.
 - `npm test` - Run the unit/integration test suite using Vitest
 - `npm run test:watch` - Run tests in watch mode
 - `npm run coverage` - Run tests and generate a coverage report
+
+## Command Line Options
+
+The server supports various command-line options for configuration:
+
+```bash
+# Basic usage
+node build/index.js [options]
+
+# Options:
+--transport <type>        # Transport type: stdio (default) | http
+--port <number>          # Port for HTTP transport (default: 3000)
+--host <string>          # Host for HTTP transport (default: 127.0.0.1)
+--allowed-origins <list> # Comma-separated list of allowed origins
+--auth-mode <mode>       # Authentication mode: local | remote | tokens
+--debug                  # Enable debug logging
+--help                   # Show help message
+
+# Examples:
+node build/index.js                                    # stdio (local use)
+node build/index.js --transport http --port 3000       # HTTP server
+node build/index.js --transport http --auth-mode remote # Remote auth
+```
 
 ## Authentication
 
@@ -121,6 +164,54 @@ If you need to re-authenticate or prefer to handle authentication separately:
 - The server attempts to automatically refresh expired access tokens using the stored refresh token.
 - If the refresh token itself expires (e.g., after 7 days if the Google Cloud app is in testing mode) or is revoked, you will need to re-authenticate using either the automatic flow (by restarting the server) or the manual `npm run auth` command.
 
+## Remote Deployment
+
+### Docker Deployment
+
+Build and run the HTTP transport version using Docker:
+
+```bash
+# Build the Docker image
+docker build -f Dockerfile.http -t google-calendar-mcp:http .
+
+# Run with volume mount for OAuth credentials
+docker run -d \
+  --name google-calendar-mcp \
+  -p 3000:3000 \
+  -v $(pwd)/gcp-oauth.keys.json:/app/gcp-oauth.keys.json:ro \
+  -v $(pwd)/.gcp-saved-tokens.json:/app/.gcp-saved-tokens.json \
+  google-calendar-mcp:http
+
+# Check health
+curl http://localhost:3000/health
+```
+
+### Cloud Deployment
+
+The HTTP transport mode enables deployment to cloud platforms:
+
+1. **Prepare Authentication**: Ensure you have valid OAuth tokens
+2. **Set Environment Variables**: Configure allowed origins and other settings
+3. **Deploy**: Use your preferred cloud platform (AWS, GCP, Azure, etc.)
+
+Example environment variables:
+```bash
+TRANSPORT=http
+PORT=3000
+HOST=0.0.0.0
+ALLOWED_ORIGINS=https://your-client-domain.com,https://another-domain.com
+```
+
+### Security Considerations for Remote Deployment
+
+When deploying remotely:
+
+1. **Use HTTPS**: Always deploy behind HTTPS in production
+2. **Configure Origins**: Set `--allowed-origins` to restrict access
+3. **Network Security**: Use firewalls and VPCs to limit access
+4. **Authentication**: Consider additional authentication layers
+5. **Monitoring**: Set up logging and monitoring for security events
+
 ## Testing
 
 Unit and integration tests are implemented using [Vitest](https://vitest.dev/).
@@ -136,8 +227,11 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
 - The server runs locally and requires OAuth authentication.
 - OAuth credentials (`gcp-oauth.keys.json`) and saved tokens (`.gcp-saved-tokens.json`) should **never** be committed to version control. Ensure they are added to your `.gitignore` file.
 - For production use, consider getting your OAuth application verified by Google.
+- When using HTTP transport, implement proper network security and access controls.
 
 ## Usage with Claude Desktop
+
+### Local Usage (stdio)
 
 1. Add this configuration to your Claude Desktop config file. E.g. `/Users/<user>/Library/Application Support/Claude/claude_desktop_config.json`:
    ```json
@@ -154,6 +248,28 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
 
 2. Restart Claude Desktop
 
+### Remote Usage (HTTP)
+
+1. Deploy the server using HTTP transport
+2. Configure Claude Desktop to connect to the remote server:
+   ```json
+   {
+     "mcpServers": {
+       "google-calendar-remote": {
+         "url": "https://your-server-domain.com/sse"
+       }
+     }
+   }
+   ```
+
+## API Endpoints (HTTP Transport)
+
+When running in HTTP mode, the server exposes these endpoints:
+
+- `GET /sse` - Server-Sent Events endpoint for MCP connections
+- `POST /messages` - Message handling endpoint
+- `GET /health` - Health check endpoint
+- `GET /info` - Server information endpoint
 
 ## Development
 
@@ -173,6 +289,11 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
    - Run `npm install` again.
    - Check Node.js version (use LTS).
    - Delete the `build/` directory and run `npm run build`.
+
+4. **HTTP Transport Issues:**
+   - Check firewall settings and port availability
+   - Verify CORS configuration for cross-origin requests
+   - Ensure proper authentication setup before starting HTTP mode
 
 if you are a developer want to contribute this repository, please kindly take a look at [Architecture Overview](docs/architecture.md) before contributing
 

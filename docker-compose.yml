@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  google-calendar-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.http
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount OAuth credentials (create these files first)
+      - ./gcp-oauth.keys.json:/app/gcp-oauth.keys.json:ro
+      - ./gcp-saved-tokens.json:/app/.gcp-saved-tokens.json
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge 
