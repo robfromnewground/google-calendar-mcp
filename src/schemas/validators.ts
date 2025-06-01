@@ -13,7 +13,8 @@ export const RemindersSchema = z.object({
 });
 
 // ISO datetime regex that requires timezone designator (Z or +/-HH:MM)
-const isoDateTimeWithTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/;
+// Updated to match RFC 3339 properly, including optional fractional seconds
+const isoDateTimeWithTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
 
 export const ListEventsArgumentsSchema = z.object({
   calendarId: z.preprocess(

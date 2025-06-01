@@ -90,7 +90,7 @@ export class ListEventsHandler extends BaseToolHandler {
         const { events, errors } = this.processBatchResponses(responses, calendarIds);
         
         if (errors.length > 0) {
-            console.warn("Some calendars had errors:", errors.map(e => `${e.calendarId}: ${e.error}`));
+            process.stderr.write(`Some calendars had errors: ${errors.map(e => `${e.calendarId}: ${e.error}`).join(', ')}\n`);
         }
         
         return this.sortEventsByStartTime(events);

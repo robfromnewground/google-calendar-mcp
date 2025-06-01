@@ -13,16 +13,21 @@ export interface ServerConfig {
 }
 
 export function parseArgs(args: string[]): ServerConfig {
+  // Start with environment variables as base config
   const config: ServerConfig = {
     transport: {
-      type: 'stdio', // Default to stdio for backward compatibility
-      port: 3000,
-      host: '127.0.0.1', // Bind to localhost for security
-      allowedOrigins: ['http://localhost:3000', 'https://localhost:3000'],
-      sessionTimeout: 30 * 60 * 1000, // 30 minutes
-      authMode: 'local'
+      type: (process.env.TRANSPORT as 'stdio' | 'http') || 'stdio',
+      port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+      host: process.env.HOST || '127.0.0.1',
+      allowedOrigins: process.env.ALLOWED_ORIGINS 
+        ? process.env.ALLOWED_ORIGINS.split(',')
+        : ['http://localhost:3000', 'https://localhost:3000'],
+      sessionTimeout: process.env.SESSION_TIMEOUT 
+        ? parseInt(process.env.SESSION_TIMEOUT, 10) 
+        : 30 * 60 * 1000,
+      authMode: (process.env.AUTH_MODE as 'local' | 'remote' | 'tokens') || 'local'
     },
-    debug: false
+    debug: process.env.DEBUG === 'true' || false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -54,7 +59,7 @@ export function parseArgs(args: string[]): ServerConfig {
         config.debug = true;
         break;
       case '--help':
-        console.log(`
+        process.stderr.write(`
 Google Calendar MCP Server
 
 Usage: node build/index.js [options]
@@ -68,9 +73,21 @@ Options:
   --debug                  Enable debug logging
   --help                   Show this help message
 
+Environment Variables:
+  TRANSPORT               Transport type: stdio | http
+  PORT                   Port for HTTP transport
+  HOST                   Host for HTTP transport
+  ALLOWED_ORIGINS        Comma-separated list of allowed origins
+  AUTH_MODE              Authentication mode: local | remote | tokens
+  SESSION_TIMEOUT        Session timeout in milliseconds
+  DEBUG                  Enable debug logging (true/false)
+
+Note: Command line arguments override environment variables.
+
 Examples:
   node build/index.js                                    # stdio (local use)
   node build/index.js --transport http --port 3000       # HTTP server
+  PORT=3000 TRANSPORT=http node build/index.js           # Using env vars
   node build/index.js --transport http --auth-mode remote # Remote auth
         `);
         process.exit(0);

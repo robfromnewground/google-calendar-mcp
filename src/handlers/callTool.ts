@@ -25,7 +25,7 @@ export async function handleCallTool(request: typeof CallToolRequestSchema._type
         const handler = getHandler(name);
         return await handler.runTool(args, oauth2Client);
     } catch (error: unknown) {
-        console.error(`Error executing tool '${name}':`, error);
+        process.stderr.write(`Error executing tool '${name}': ${error instanceof Error ? error.message : error}\n`);
         // Re-throw the error to be handled by the main server logic or error handler
         throw error;
     }

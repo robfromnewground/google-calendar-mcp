@@ -1,5 +1,6 @@
 # Architecture Overview
 
+
 ## BaseToolHandler
 
 The `BaseToolHandler` class provides a foundation for all tool handlers in this project. It encapsulates common functionality such as:
@@ -86,4 +87,18 @@ const handlerMap: Record<string, BaseToolHandler> = {
     "update-event": new UpdateEventHandler(),
     "delete-event": new DeleteEventHandler(),
 };
+```
+
+### Code Quality Tests
+
+The test suite includes specialized tests to maintain code quality and MCP compliance:
+
+- **Console Statement Detection**: Automatically scans source code for `console.log`, `console.error`, and other console methods that are not supported in MCP clients. This ensures the server follows MCP best practices by using `process.stderr.write()` for error logging instead.
+- **Tool Handler Tests**: Verify that all calendar operations work correctly with mocked Google APIs
+- **Batch Request Tests**: Test the batch processing capabilities for handling multiple calendar operations
+- **Schema Validation Tests**: Ensure all input validation works correctly
+
+Run the console statement detection test specifically:
+```bash
+npm test -- console-statements.test.ts
 ```
