@@ -5,7 +5,6 @@ import { OAuth2Client } from "google-auth-library";
 import { fileURLToPath } from "url";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import http from "http";
 
 // Import authentication components
 import { initializeOAuth2Client } from './auth/client.js';
@@ -67,7 +66,7 @@ async function ensureAuthenticated() {
   }
 }
 
-async function executeWithHandler<T>(handler: any, args: any): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+async function executeWithHandler(handler: any, args: any): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   await ensureAuthenticated();
   const result = await handler.runTool(args, oauth2Client);
   return result;
@@ -79,31 +78,18 @@ async function main() {
     // 1. Parse command line arguments
     config = parseArgs(process.argv.slice(2));
     
-    // 2. Initialize Authentication based on transport type
-    if (config.transport.type === 'stdio' || config.transport.authMode === 'local') {
-      // Local authentication flow (current behavior)
-      oauth2Client = await initializeOAuth2Client();
-      tokenManager = new TokenManager(oauth2Client);
-      authServer = new AuthServer(oauth2Client);
+    // 2. Initialize Authentication
+    oauth2Client = await initializeOAuth2Client();
+    tokenManager = new TokenManager(oauth2Client);
+    authServer = new AuthServer(oauth2Client);
 
-      // Start auth server if authentication is required
-      const authSuccess = await authServer.start();
-      if (!authSuccess) {
-        process.stderr.write('Authentication failed\n');
-        process.exit(1);
-      }
-    } else {
-      // For HTTP transport with remote auth, we'll need to handle authentication differently
-      // For now, we'll require local auth setup even for HTTP transport
-      oauth2Client = await initializeOAuth2Client();
-      tokenManager = new TokenManager(oauth2Client);
-      authServer = new AuthServer(oauth2Client);
-
-      const authSuccess = await authServer.start(false); // Don't open browser for HTTP mode
-      if (!authSuccess) {
-        process.stderr.write('Authentication failed. Please run "npm run auth" first for HTTP mode.\n');
-        process.exit(1);
-      }
+    // Start auth server - don't open browser for HTTP mode
+    const openBrowser = config.transport.type === 'stdio';
+    const authSuccess = await authServer.start(openBrowser);
+    if (!authSuccess) {
+      const mode = config.transport.type === 'http' ? 'HTTP' : 'stdio';
+      process.stderr.write(`Authentication failed for ${mode} mode. Please run "npm run auth" first.\n`);
+      process.exit(1);
     }
 
     // 3. Set up Modern Tool Definitions
@@ -312,41 +298,16 @@ async function createAndConnectTransport() {
       break;
       
     case 'http':
-
       const port = config.transport.port || 3000;
       const host = config.transport.host || '127.0.0.1';
       
       const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined
+        sessionIdGenerator: () => randomUUID()
       });
 
-      // Connect to the MCP server
       await server.connect(transport);
       
-      // Add basic health check endpoint using native HTTP
-      const healthServer = http.createServer((req, res) => {
-        if (req.url === '/health' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            status: 'ok',
-            transport: 'streamable-http',
-            capabilities: {
-              tools: true,
-              resources: false,
-              prompts: false
-            }
-          }));
-        } else {
-          res.writeHead(404, { 'Content-Type': 'text/plain' });
-          res.end('Not Found');
-        }
-      });
-
-      healthServer.listen(port + 1, host, () => {
-        process.stderr.write(`Google Calendar MCP Server (HTTP) listening on ${host}:${port}\n`);
-        process.stderr.write(`Health check: http://${host}:${port + 1}/health\n`);
-        process.stderr.write(`Send MCP requests to: http://${host}:${port}/\n`);
-      });
+      process.stderr.write(`Google Calendar MCP Server listening on http://${host}:${port}\n`);
       break;
       
     default:

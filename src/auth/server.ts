@@ -1,14 +1,13 @@
-import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { TokenManager } from './tokenManager.js';
 import http from 'http';
+import { URL } from 'url';
 import open from 'open';
 import { loadCredentials } from './client.js';
 
 export class AuthServer {
   private baseOAuth2Client: OAuth2Client; // Used by TokenManager for validation/refresh
   private flowOAuth2Client: OAuth2Client | null = null; // Used specifically for the auth code flow
-  private app: express.Express;
   private server: http.Server | null = null;
   private tokenManager: TokenManager;
   private portRange: { start: number; end: number };
@@ -17,98 +16,108 @@ export class AuthServer {
   constructor(oauth2Client: OAuth2Client) {
     this.baseOAuth2Client = oauth2Client;
     this.tokenManager = new TokenManager(oauth2Client);
-    this.app = express();
     this.portRange = { start: 3000, end: 3004 };
-    this.setupRoutes();
   }
 
-  private setupRoutes(): void {
-    this.app.get('/', (req, res) => {
-      // Generate the URL using the active flow client if available, else base
-      const clientForUrl = this.flowOAuth2Client || this.baseOAuth2Client;
-      const scopes = ['https://www.googleapis.com/auth/calendar'];
-      const authUrl = clientForUrl.generateAuthUrl({
-        access_type: 'offline',
-        scope: scopes,
-        prompt: 'consent'
-      });
-      res.send(`<h1>Google Calendar Authentication</h1><a href="${authUrl}">Authenticate with Google</a>`);
-    });
+  private createServer(): http.Server {
+    return http.createServer(async (req, res) => {
+      const url = new URL(req.url || '/', `http://${req.headers.host}`);
+      
+      if (url.pathname === '/') {
+        // Root route - show auth link
+        const clientForUrl = this.flowOAuth2Client || this.baseOAuth2Client;
+        const scopes = ['https://www.googleapis.com/auth/calendar'];
+        const authUrl = clientForUrl.generateAuthUrl({
+          access_type: 'offline',
+          scope: scopes,
+          prompt: 'consent'
+        });
+        
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`<h1>Google Calendar Authentication</h1><a href="${authUrl}">Authenticate with Google</a>`);
+        
+      } else if (url.pathname === '/oauth2callback') {
+        // OAuth callback route
+        const code = url.searchParams.get('code');
+        if (!code) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Authorization code missing');
+          return;
+        }
+        
+        if (!this.flowOAuth2Client) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Authentication flow not properly initiated.');
+          return;
+        }
+        
+        try {
+          const { tokens } = await this.flowOAuth2Client.getToken(code);
+          await this.tokenManager.saveTokens(tokens);
+          this.authCompletedSuccessfully = true;
 
-    this.app.get('/oauth2callback', async (req, res) => {
-      const code = req.query.code as string;
-      if (!code) {
-        res.status(400).send('Authorization code missing');
-        return;
-      }
-      // IMPORTANT: Use the flowOAuth2Client to exchange the code
-      if (!this.flowOAuth2Client) {
-        res.status(500).send('Authentication flow not properly initiated.');
-        return;
-      }
-      try {
-        const { tokens } = await this.flowOAuth2Client.getToken(code);
-        // Save tokens using the TokenManager (which uses the base client)
-        await this.tokenManager.saveTokens(tokens);
-        this.authCompletedSuccessfully = true;
-
-        // Get the path where tokens were saved
-        const tokenPath = this.tokenManager.getTokenPath();
-
-        // Send a more informative HTML response including the path
-        res.send(`
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Authentication Successful</title>
-              <style>
-                  body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
-                  .container { text-align: center; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-                  h1 { color: #4CAF50; }
-                  p { color: #333; margin-bottom: 0.5em; }
-                  code { background-color: #eee; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <h1>Authentication Successful!</h1>
-                  <p>Your authentication tokens have been saved successfully to:</p>
-                  <p><code>${tokenPath}</code></p>
-                  <p>You can now close this browser window.</p>
-              </div>
-          </body>
-          </html>
-        `);
-      } catch (error: unknown) {
-        this.authCompletedSuccessfully = false;
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        // Send an HTML error response
-        res.status(500).send(`
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Authentication Failed</title>
-              <style>
-                  body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
-                  .container { text-align: center; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-                  h1 { color: #F44336; }
-                  p { color: #333; }
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <h1>Authentication Failed</h1>
-                  <p>An error occurred during authentication:</p>
-                  <p><code>${message}</code></p>
-                  <p>Please try again or check the server logs.</p>
-              </div>
-          </body>
-          </html>
-        `);
+          const tokenPath = this.tokenManager.getTokenPath();
+          
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Successful</title>
+                <style>
+                    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
+                    .container { text-align: center; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    h1 { color: #4CAF50; }
+                    p { color: #333; margin-bottom: 0.5em; }
+                    code { background-color: #eee; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Authentication Successful!</h1>
+                    <p>Your authentication tokens have been saved successfully to:</p>
+                    <p><code>${tokenPath}</code></p>
+                    <p>You can now close this browser window.</p>
+                </div>
+            </body>
+            </html>
+          `);
+        } catch (error: unknown) {
+          this.authCompletedSuccessfully = false;
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          
+          res.writeHead(500, { 'Content-Type': 'text/html' });
+          res.end(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Failed</title>
+                <style>
+                    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
+                    .container { text-align: center; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    h1 { color: #F44336; }
+                    p { color: #333; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Authentication Failed</h1>
+                    <p>An error occurred during authentication:</p>
+                    <p><code>${message}</code></p>
+                    <p>Please try again or check the server logs.</p>
+                </div>
+            </body>
+            </html>
+          `);
+        }
+      } else {
+        // 404 for other routes
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
       }
     });
   }
@@ -158,8 +167,8 @@ export class AuthServer {
     for (let port = this.portRange.start; port <= this.portRange.end; port++) {
       try {
         await new Promise<void>((resolve, reject) => {
-          // Create a temporary server instance to test the port
-          const testServer = this.app.listen(port, () => {
+          const testServer = this.createServer();
+          testServer.listen(port, () => {
             this.server = testServer; // Assign to class property *only* if successful
             resolve();
           });

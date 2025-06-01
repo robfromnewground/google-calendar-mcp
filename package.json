@@ -11,7 +11,7 @@
     "build": "npm run typecheck && node scripts/build.js",
     "start": "node build/index.js",
     "start:http": "node build/index.js --transport http --port 3000",
-    "start:http:remote": "node build/index.js --transport http --port 3000 --host 0.0.0.0 --auth-mode remote",
+    "start:http:public": "node build/index.js --transport http --port 3000 --host 0.0.0.0",
     "auth": "node build/auth-server.js",
     "postinstall": "scripts/build.js",
     "test": "vitest run",
@@ -21,9 +21,6 @@
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@types/express": "^4.17.21",
-    "esbuild": "^0.25.0",
-    "express": "^4.18.2",
     "google-auth-library": "^9.15.0",
     "googleapis": "^144.0.0",
     "open": "^7.4.2",
@@ -32,6 +29,7 @@
   "devDependencies": {
     "@types/node": "^20.10.4",
     "@vitest/coverage-v8": "^3.1.1",
+    "esbuild": "^0.25.0",
     "typescript": "^5.3.3",
     "vitest": "^3.1.1"
   }
