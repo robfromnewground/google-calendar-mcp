@@ -12,7 +12,7 @@ import { DeleteEventHandler } from "../handlers/core/DeleteEventHandler.js";
 import { FreeBusyEventHandler } from "../handlers/core/FreeBusyEventHandler.js";
 
 // Import centralized validation schemas
-import { RFC3339DateTimeSchema } from '../schemas/validators.js';
+import { RFC3339DateTimeSchema, TimeMinSchema, TimeMaxSchema } from '../schemas/validators.js';
 
 // --- Zod Schema Definitions ---
 
@@ -60,10 +60,10 @@ export function registerAllTools(
         CalendarIdSchema,
         z.array(CalendarIdSchema).min(1).max(50)
       ]).describe("ID of the calendar(s) to list events from"),
-      timeMin: RFC3339DateTimeSchema.optional().describe("Start time boundary"),
-      timeMax: RFC3339DateTimeSchema.optional().describe("End time boundary")
+      timeMin: TimeMinSchema,
+      timeMax: TimeMaxSchema
     },
-    async ({ calendarId, timeMin, timeMax }: { calendarId: string | string[], timeMin?: string, timeMax?: string }) => {
+    async ({ calendarId, timeMin, timeMax }: { calendarId: string | string[], timeMin: string, timeMax: string }) => {
       const handler = new ListEventsHandler();
       return executeWithHandler(handler, { calendarId, timeMin, timeMax });
     }
@@ -76,10 +76,10 @@ export function registerAllTools(
     {
       calendarId: CalendarIdSchema,
       query: z.string().describe("Free text search query (searches summary, description, location, attendees, etc.)"),
-      timeMin: RFC3339DateTimeSchema.optional().describe("Start time boundary"),
-      timeMax: RFC3339DateTimeSchema.optional().describe("End time boundary")
+      timeMin: TimeMinSchema,
+      timeMax: TimeMaxSchema
     },
-    async ({ calendarId, query, timeMin, timeMax }: { calendarId: string, query: string, timeMin?: string, timeMax?: string }) => {
+    async ({ calendarId, query, timeMin, timeMax }: { calendarId: string, query: string, timeMin: string, timeMax: string }) => {
       const handler = new SearchEventsHandler();
       return executeWithHandler(handler, { calendarId, query, timeMin, timeMax });
     }
@@ -104,8 +104,8 @@ export function registerAllTools(
       calendarId: CalendarIdSchema,
       summary: z.string().describe("Title of the event"),
       description: z.string().optional().describe("Description/notes for the event"),
-      start: RFC3339DateTimeSchema.describe("Start time"),
-      end: RFC3339DateTimeSchema.describe("End time"),
+      start: RFC3339DateTimeSchema.describe("Event start time"),
+      end: RFC3339DateTimeSchema.describe("Event end time"),
       timeZone: z.string().describe("Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles)"),
       location: z.string().optional().describe("Location of the event"),
       attendees: z.array(AttendeeSchema).optional().describe("List of attendee email addresses"),
@@ -145,7 +145,7 @@ export function registerAllTools(
       description: z.string().optional().describe("Updated description/notes"),
       start: RFC3339DateTimeSchema.optional().describe("Updated start time"),
       end: RFC3339DateTimeSchema.optional().describe("Updated end time"),
-      timeZone: z.string().optional().describe("Updated timezone"),
+      timeZone: z.string().describe("Updated timezone"),
       location: z.string().optional().describe("Updated location"),
       attendees: z.array(AttendeeSchema).optional().describe("Updated attendee list"),
       colorId: z.string().optional().describe("Updated color ID"),
@@ -198,15 +198,15 @@ export function registerAllTools(
     "get-freebusy",
     "Query free/busy information for calendars",
     {
-      items: z.array(z.object({
+      calendars: z.array(z.object({
         id: CalendarIdSchema
-      })).describe("List of calendars to check"),
-      timeMin: RFC3339DateTimeSchema.describe("Start time for the query"),
-      timeMax: RFC3339DateTimeSchema.describe("End time for the query"),
+      })).describe("List of calendars and/or groups to query for free/busy information"),
+      timeMin: TimeMinSchema,
+      timeMax: TimeMaxSchema,
       timeZone: z.string().optional().describe("Timezone for the query")
     },
     async (args: {
-      items: Array<{ id: string }>;
+      calendars: Array<{ id: string }>;
       timeMin: string;
       timeMax: string;
       timeZone?: string;

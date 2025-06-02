@@ -137,6 +137,18 @@ async function createAndConnectTransport() {
           return;
         }
 
+        // Handle health check endpoint
+        if (req.method === 'GET' && req.url === '/health') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: 'healthy',
+            server: 'google-calendar-mcp',
+            version: '1.2.0',
+            timestamp: new Date().toISOString()
+          }));
+          return;
+        }
+
         try {
           await transport.handleRequest(req, res);
         } catch (error) {

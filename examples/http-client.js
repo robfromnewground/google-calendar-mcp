@@ -43,36 +43,8 @@ async function main() {
       }
     });
 
-    // Test direct initialization first to debug headers
-    console.log('\n🔍 Testing direct HTTP initialization...');
-    const directInitResponse = await fetch(serverUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {} },
-          clientInfo: { name: 'direct-test-client', version: '1.0.0' }
-        },
-        id: 1
-      })
-    });
-
-    console.log(`Direct init status: ${directInitResponse.status}`);
-    if (directInitResponse.status === 200) {
-      console.log('✅ Direct initialization successful');
-      const sessionId = directInitResponse.headers.get('mcp-session-id');
-      console.log(`Session ID: ${sessionId}`);
-    } else {
-      const errorText = await directInitResponse.text();
-      console.error('❌ Direct initialization failed:', errorText);
-      return;
-    }
+    // Skip direct initialization test to avoid double-initialization error
+    console.log('\n🔍 Skipping direct initialization test...');
 
     // Connect with SDK transport
     console.log('\n🚀 Connecting with MCP SDK transport...');

@@ -19,6 +19,10 @@ export const RFC3339DateTimeSchema = z.string()
   .datetime({ offset: true })
   .describe("Must be RFC3339 format with mandatory timezone offset (e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00-07:00)");
 
+// Unified time boundary schemas for consistent usage across tools
+export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary (RFC3339 format with timezone, e.g., 2024-01-01T00:00:00Z)");
+export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary (RFC3339 format with timezone, e.g., 2024-01-01T23:59:59Z)");
+
 export const ListEventsArgumentsSchema = z.object({
   calendarId: z.union([
     z.string().min(1, "Calendar ID cannot be empty"),
@@ -52,8 +56,8 @@ export const ListEventsArgumentsSchema = z.object({
 export const SearchEventsArgumentsSchema = z.object({
   calendarId: z.string(),
   query: z.string(),
-  timeMin: RFC3339DateTimeSchema.optional(),
-  timeMax: RFC3339DateTimeSchema.optional(),
+  timeMin: TimeMinSchema,
+  timeMax: TimeMaxSchema,
 });
 
 export const CreateEventArgumentsSchema = z.object({
@@ -150,7 +154,7 @@ export const FreeBusyEventArgumentsSchema = z.object({
   timeZone: z.string().optional(),
   groupExpansionMax: z.number().int().max(100).optional(),
   calendarExpansionMax: z.number().int().max(50).optional(),
-  items: z.array(z.object({
-    id: z.string().email("Must be a valid email address"),
-  })),
+  calendars: z.array(z.object({
+    id: z.string().min(1, "Calendar ID cannot be empty"),
+  })).describe("List of calendars and/or groups to query for free/busy information"),
 });
