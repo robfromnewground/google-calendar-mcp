@@ -11,6 +11,7 @@ This is a Model Context Protocol (MCP) server that provides integration with Goo
 - **Free/Busy Queries**: Check availability across calendars
 - **Dual Transport Support**: Both stdio (local) and HTTP (remote) transports
 - **Remote Deployment**: Can be deployed as a web service for remote access
+- **Consistent Time Validation**: All time-based operations require RFC3339 datetime format with mandatory timezone specification
 
 ## Transport Modes
 

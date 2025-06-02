@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { UpdateEventArgumentsSchema } from './validators.js';
+import { UpdateEventArgumentsSchema, ListEventsArgumentsSchema } from './validators.js';
 
 // Helper to generate a future date string in the correct format (without milliseconds)
 function getFutureDateString(daysFromNow: number = 365): string {
@@ -339,5 +339,60 @@ describe('UpdateEventArgumentsSchema with Recurring Event Support', () => {
       expect(result.summary).toBe('Updated Meeting');
       expect(result.location).toBe('Conference Room A');
     });
+  });
+});
+
+describe('ListEventsArgumentsSchema JSON String Handling', () => {
+  it('should parse JSON string calendarId into array', () => {
+    const input = {
+      calendarId: '["primary", "secondary@gmail.com"]',
+      timeMin: '2024-01-01T00:00:00Z',
+      timeMax: '2024-01-02T00:00:00Z'
+    };
+
+    const result = ListEventsArgumentsSchema.parse(input);
+    expect(result.calendarId).toEqual(['primary', 'secondary@gmail.com']);
+  });
+
+  it('should handle regular string calendarId', () => {
+    const input = {
+      calendarId: 'primary',
+      timeMin: '2024-01-01T00:00:00Z',
+      timeMax: '2024-01-02T00:00:00Z'
+    };
+
+    const result = ListEventsArgumentsSchema.parse(input);
+    expect(result.calendarId).toBe('primary');
+  });
+
+  it('should handle regular array calendarId', () => {
+    const input = {
+      calendarId: ['primary', 'secondary@gmail.com'],
+      timeMin: '2024-01-01T00:00:00Z',
+      timeMax: '2024-01-02T00:00:00Z'
+    };
+
+    const result = ListEventsArgumentsSchema.parse(input);
+    expect(result.calendarId).toEqual(['primary', 'secondary@gmail.com']);
+  });
+
+  it('should reject invalid JSON string', () => {
+    const input = {
+      calendarId: '["primary", invalid]',
+      timeMin: '2024-01-01T00:00:00Z',
+      timeMax: '2024-01-02T00:00:00Z'
+    };
+
+    expect(() => ListEventsArgumentsSchema.parse(input)).toThrow();
+  });
+
+  it('should reject JSON string with non-string elements', () => {
+    const input = {
+      calendarId: '["primary", 123]',
+      timeMin: '2024-01-01T00:00:00Z',
+      timeMax: '2024-01-02T00:00:00Z'
+    };
+
+    expect(() => ListEventsArgumentsSchema.parse(input)).toThrow();
   });
 }); 

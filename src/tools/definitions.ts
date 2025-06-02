@@ -59,7 +59,32 @@ export function registerAllTools(
       calendarId: z.union([
         CalendarIdSchema,
         z.array(CalendarIdSchema).min(1).max(50)
-      ]).describe("ID of the calendar(s) to list events from"),
+      ]).transform((value) => {
+        // Handle case where calendarId is passed as a JSON string
+        if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed) && parsed.every(id => typeof id === 'string' && id.length > 0)) {
+              // Validate the parsed array meets our constraints
+              if (parsed.length === 0) {
+                throw new Error("At least one calendar ID is required");
+              }
+              if (parsed.length > 50) {
+                throw new Error("Maximum 50 calendars allowed per request");
+              }
+              if (new Set(parsed).size !== parsed.length) {
+                throw new Error("Duplicate calendar IDs are not allowed");
+              }
+              return parsed;
+            } else {
+              throw new Error('JSON string must contain an array of non-empty strings');
+            }
+          } catch (error) {
+            throw new Error(`Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
+          }
+        }
+        return value;
+      }).describe("ID of the calendar(s) to list events from"),
       timeMin: TimeMinSchema,
       timeMax: TimeMaxSchema
     },

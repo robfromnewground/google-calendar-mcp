@@ -22,6 +22,7 @@ export class ListEventsHandler extends BaseToolHandler {
         const validArgs = args;
         
         // Normalize calendarId to always be an array for consistent processing
+        // The Zod schema transform has already handled JSON string parsing if needed
         const calendarIds = Array.isArray(validArgs.calendarId) 
             ? validArgs.calendarId 
             : [validArgs.calendarId];

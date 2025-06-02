@@ -118,14 +118,46 @@ async function createAndConnectTransport() {
       const port = config.transport.port || 3000;
       const host = config.transport.host || '127.0.0.1';
       
+      // Configure transport for stateless mode to allow multiple initialization cycles
       const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID()
+        sessionIdGenerator: undefined // Stateless mode - allows multiple initializations
       });
 
       await server.connect(transport);
       
       // Create HTTP server to handle the StreamableHTTP transport
       const httpServer = http.createServer(async (req, res) => {
+        // Validate Origin header to prevent DNS rebinding attacks (MCP spec requirement)
+        const origin = req.headers.origin;
+        const allowedOrigins = [
+          'http://localhost',
+          'http://127.0.0.1',
+          'https://localhost', 
+          'https://127.0.0.1'
+        ];
+        
+        // For requests with Origin header, validate it
+        if (origin && !allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'Forbidden: Invalid origin',
+            message: 'Origin header validation failed'
+          }));
+          return;
+        }
+
+        // Basic request size limiting (prevent DoS)
+        const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+        const maxRequestSize = 10 * 1024 * 1024; // 10MB limit
+        if (contentLength > maxRequestSize) {
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'Payload Too Large',
+            message: 'Request size exceeds maximum allowed size'
+          }));
+          return;
+        }
+
         // Handle CORS
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -135,6 +167,19 @@ async function createAndConnectTransport() {
           res.writeHead(200);
           res.end();
           return;
+        }
+
+        // Validate Accept header for MCP requests (spec requirement)
+        if (req.method === 'POST' || req.method === 'GET') {
+          const acceptHeader = req.headers.accept;
+          if (acceptHeader && !acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream') && !acceptHeader.includes('*/*')) {
+            res.writeHead(406, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              error: 'Not Acceptable',
+              message: 'Accept header must include application/json or text/event-stream'
+            }));
+            return;
+          }
         }
 
         // Handle health check endpoint
