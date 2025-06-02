@@ -123,6 +123,16 @@ export class AuthServer {
   }
 
   async start(openBrowser = true): Promise<boolean> {
+    // Add timeout wrapper to prevent hanging
+    return Promise.race([
+      this.startWithTimeout(openBrowser),
+      new Promise<boolean>((_, reject) => {
+        setTimeout(() => reject(new Error('Auth server start timed out after 10 seconds')), 10000);
+      })
+    ]).catch(() => false); // Return false on timeout instead of throwing
+  }
+
+  private async startWithTimeout(openBrowser = true): Promise<boolean> {
     if (await this.tokenManager.validateTokens()) {
       this.authCompletedSuccessfully = true;
       return true;

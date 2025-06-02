@@ -12,41 +12,28 @@ export const RemindersSchema = z.object({
   overrides: z.array(ReminderSchema).optional(),
 });
 
-// ISO datetime regex that requires timezone designator (Z or +/-HH:MM)
-// Updated to match RFC 3339 properly, including optional fractional seconds
-const isoDateTimeWithTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
+// Centralized RFC3339 datetime schema that matches Google Calendar API requirements exactly
+// Google Calendar API documentation states: "Must be an RFC3339 timestamp with mandatory time zone offset"
+// Examples: 2011-06-03T10:00:00-07:00, 2011-06-03T10:00:00Z
+export const RFC3339DateTimeSchema = z.string()
+  .datetime({ offset: true })
+  .describe("Must be RFC3339 format with mandatory timezone offset (e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00-07:00)");
 
 export const ListEventsArgumentsSchema = z.object({
-  calendarId: z.preprocess(
-    (val) => {
-      // If it's a string that looks like JSON array, try to parse it
-      if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
-        try {
-          return JSON.parse(val);
-        } catch {
-          // If parsing fails, return as-is (will be validated as string)
-          return val;
-        }
-      }
-      return val;
-    },
-    z.union([
-      z.string().min(1, "Calendar ID cannot be empty"),
-      z.array(z.string().min(1, "Calendar ID cannot be empty"))
-        .min(1, "At least one calendar ID is required")
-        .max(50, "Maximum 50 calendars allowed per request")
-        .refine(
-          (ids) => new Set(ids).size === ids.length,
-          "Duplicate calendar IDs are not allowed"
-        )
-    ])
-  ).describe("Calendar ID(s) to fetch events from"),
-  timeMin: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
+  calendarId: z.union([
+    z.string().min(1, "Calendar ID cannot be empty"),
+    z.array(z.string().min(1, "Calendar ID cannot be empty"))
+      .min(1, "At least one calendar ID is required")
+      .max(50, "Maximum 50 calendars allowed per request")
+      .refine(
+        (ids) => new Set(ids).size === ids.length,
+        "Duplicate calendar IDs are not allowed"
+      )
+  ]).describe("Calendar ID(s) to fetch events from"),
+  timeMin: RFC3339DateTimeSchema
     .optional()
     .describe("Start time for event filtering"),
-  timeMax: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
+  timeMax: RFC3339DateTimeSchema
     .optional()
     .describe("End time for event filtering"),
 }).refine(
@@ -65,20 +52,16 @@ export const ListEventsArgumentsSchema = z.object({
 export const SearchEventsArgumentsSchema = z.object({
   calendarId: z.string(),
   query: z.string(),
-  timeMin: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
-  timeMax: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-12-31T23:59:59Z)")
-    .optional(),
+  timeMin: RFC3339DateTimeSchema.optional(),
+  timeMax: RFC3339DateTimeSchema.optional(),
 });
 
 export const CreateEventArgumentsSchema = z.object({
   calendarId: z.string(),
   summary: z.string(),
   description: z.string().optional(),
-  start: z.string().regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)"),
-  end: z.string().regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)"),
+  start: RFC3339DateTimeSchema,
+  end: RFC3339DateTimeSchema,
   timeZone: z.string(),
   attendees: z
     .array(
@@ -98,12 +81,8 @@ export const UpdateEventArgumentsSchema = z.object({
   eventId: z.string(),
   summary: z.string().optional(),
   description: z.string().optional(),
-  start: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
-  end: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
+  start: RFC3339DateTimeSchema.optional(),
+  end: RFC3339DateTimeSchema.optional(),
   timeZone: z.string(), // Required even if start/end don't change, per API docs for patch
   attendees: z
     .array(
@@ -117,35 +96,31 @@ export const UpdateEventArgumentsSchema = z.object({
   reminders: RemindersSchema.optional(),
   recurrence: z.array(z.string()).optional(),
   // New recurring event parameters
-  modificationScope: z.enum(['single', 'all', 'future']).default('all'),
-  originalStartTime: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
-  futureStartDate: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)")
-    .optional(),
+  modificationScope: z.enum(['thisAndFollowing', 'all', 'thisEventOnly']).optional(),
+  originalStartTime: RFC3339DateTimeSchema.optional(),
+  futureStartDate: RFC3339DateTimeSchema.optional(),
 }).refine(
   (data) => {
-    // Require originalStartTime when modificationScope is 'single'
-    if (data.modificationScope === 'single' && !data.originalStartTime) {
+    // Require originalStartTime when modificationScope is 'thisEventOnly'
+    if (data.modificationScope === 'thisEventOnly' && !data.originalStartTime) {
       return false;
     }
     return true;
   },
   {
-    message: "originalStartTime is required when modificationScope is 'single'",
+    message: "originalStartTime is required when modificationScope is 'thisEventOnly'",
     path: ["originalStartTime"]
   }
 ).refine(
   (data) => {
-    // Require futureStartDate when modificationScope is 'future'
-    if (data.modificationScope === 'future' && !data.futureStartDate) {
+    // Require futureStartDate when modificationScope is 'thisAndFollowing'
+    if (data.modificationScope === 'thisAndFollowing' && !data.futureStartDate) {
       return false;
     }
     return true;
   },
   {
-    message: "futureStartDate is required when modificationScope is 'future'",
+    message: "futureStartDate is required when modificationScope is 'thisAndFollowing'",
     path: ["futureStartDate"]
   }
 ).refine(
@@ -170,10 +145,8 @@ export const DeleteEventArgumentsSchema = z.object({
 });
 
 export const FreeBusyEventArgumentsSchema = z.object({
-  timeMin: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)"),
-  timeMax: z.string()
-    .regex(isoDateTimeWithTimezone, "Must be ISO format with timezone (e.g., 2024-01-01T00:00:00Z)"),
+  timeMin: RFC3339DateTimeSchema,
+  timeMax: RFC3339DateTimeSchema,
   timeZone: z.string().optional(),
   groupExpansionMax: z.number().int().max(100).optional(),
   calendarExpansionMax: z.number().int().max(50).optional(),
