@@ -171,6 +171,7 @@ export const UpdateEventArgumentsSchema = z.object({
 export const DeleteEventArgumentsSchema = z.object({
   calendarId: z.string(),
   eventId: z.string(),
+  sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").optional().describe("Whether to send cancellation notifications"),
 });
 
 export const FreeBusyEventArgumentsSchema = z.object({

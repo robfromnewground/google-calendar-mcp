@@ -177,7 +177,9 @@ export function registerAllTools(
       reminders: RemindersSchema.optional(),
       recurrence: z.array(z.string()).optional().describe("Updated recurrence rules"),
       sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe("Whether to send update notifications"),
-      modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe("Scope for recurring event modifications")
+      modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe("Scope for recurring event modifications"),
+      originalStartTime: RFC3339DateTimeSchema.optional().describe("Original start time of the recurring event instance (required for 'thisEventOnly' scope)"),
+      futureStartDate: RFC3339DateTimeSchema.optional().describe("Start date for future instances (required for 'thisAndFollowing' scope)")
     },
     async (args: {
       calendarId: string;
@@ -197,6 +199,8 @@ export function registerAllTools(
       recurrence?: string[];
       sendUpdates?: "all" | "externalOnly" | "none";
       modificationScope?: "thisAndFollowing" | "all" | "thisEventOnly";
+      originalStartTime?: string;
+      futureStartDate?: string;
     }) => {
       const handler = new UpdateEventHandler();
       return executeWithHandler(handler, args);
@@ -221,20 +225,24 @@ export function registerAllTools(
   // Get Free/Busy - Read-only tool
   server.tool(
     "get-freebusy",
-    "Query free/busy information for calendars",
+    "Query free/busy information for calendars. Note: Time range is limited to a maximum of 3 months between timeMin and timeMax.",
     {
       calendars: z.array(z.object({
         id: CalendarIdSchema
       })).describe("List of calendars and/or groups to query for free/busy information"),
       timeMin: TimeMinSchema,
       timeMax: TimeMaxSchema,
-      timeZone: z.string().optional().describe("Timezone for the query")
+      timeZone: z.string().optional().describe("Timezone for the query"),
+      groupExpansionMax: z.number().int().max(100).optional().describe("Maximum number of calendars to expand per group (max 100)"),
+      calendarExpansionMax: z.number().int().max(50).optional().describe("Maximum number of calendars to expand (max 50)")
     },
     async (args: {
       calendars: Array<{ id: string }>;
       timeMin: string;
       timeMax: string;
       timeZone?: string;
+      groupExpansionMax?: number;
+      calendarExpansionMax?: number;
     }) => {
       const handler = new FreeBusyEventHandler();
       return executeWithHandler(handler, args);
