@@ -129,8 +129,8 @@ export function registerAllTools(
       calendarId: CalendarIdSchema,
       summary: z.string().describe("Title of the event"),
       description: z.string().optional().describe("Description/notes for the event"),
-      start: RFC3339DateTimeSchema.describe("Event start time in RFC3339 format with timezone (e.g., '2024-01-01T10:00:00Z' or '2024-01-01T10:00:00-08:00') - MUST include timezone"),
-      end: RFC3339DateTimeSchema.describe("Event end time in RFC3339 format with timezone (e.g., '2024-01-01T11:00:00Z' or '2024-01-01T11:00:00-08:00') - MUST include timezone"),
+      start: RFC3339DateTimeSchema.describe("Event start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."),
+      end: RFC3339DateTimeSchema.describe("Event end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
       timeZone: z.string().describe("Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles)"),
       location: z.string().optional().describe("Location of the event"),
       attendees: z.array(AttendeeSchema).optional().describe("List of attendee email addresses"),
@@ -168,8 +168,8 @@ export function registerAllTools(
       eventId: z.string().describe("ID of the event to update"),
       summary: z.string().optional().describe("Updated title of the event"),
       description: z.string().optional().describe("Updated description/notes"),
-      start: RFC3339DateTimeSchema.optional().describe("Updated start time in RFC3339 format with timezone (e.g., '2024-01-01T10:00:00Z' or '2024-01-01T10:00:00-08:00') - MUST include timezone"),
-      end: RFC3339DateTimeSchema.optional().describe("Updated end time in RFC3339 format with timezone (e.g., '2024-01-01T11:00:00Z' or '2024-01-01T11:00:00-08:00') - MUST include timezone"),
+      start: RFC3339DateTimeSchema.optional().describe("Updated start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."),
+      end: RFC3339DateTimeSchema.optional().describe("Updated end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
       timeZone: z.string().describe("Updated timezone"),
       location: z.string().optional().describe("Updated location"),
       attendees: z.array(AttendeeSchema).optional().describe("Updated attendee list"),
@@ -178,8 +178,8 @@ export function registerAllTools(
       recurrence: z.array(z.string()).optional().describe("Updated recurrence rules"),
       sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe("Whether to send update notifications"),
       modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe("Scope for recurring event modifications"),
-      originalStartTime: RFC3339DateTimeSchema.optional().describe("Original start time of the recurring event instance in RFC3339 format with timezone (required for 'thisEventOnly' scope)"),
-      futureStartDate: RFC3339DateTimeSchema.optional().describe("Start date for future instances in RFC3339 format with timezone (required for 'thisAndFollowing' scope)")
+      originalStartTime: RFC3339DateTimeSchema.optional().describe("Original start time of recurring event instance - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisEventOnly' scope."),
+      futureStartDate: RFC3339DateTimeSchema.optional().describe("Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope.")
     },
     async (args: {
       calendarId: string;

@@ -238,7 +238,7 @@ describe('Complete Claude Haiku + MCP Integration Tests', () => {
     console.log('🔌 Starting MCP server...');
     serverProcess = spawn('node', ['build/index.js'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env }
+      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
     });
 
     // Wait for server to start
@@ -257,7 +257,8 @@ describe('Complete Claude Haiku + MCP Integration Tests', () => {
     // Connect to MCP server
     const transport = new StdioClientTransport({
       command: 'node',
-      args: ['build/index.js']
+      args: ['build/index.js'],
+      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
     });
     
     await mcpClient.connect(transport);

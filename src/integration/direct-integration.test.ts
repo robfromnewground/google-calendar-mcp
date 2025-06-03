@@ -32,7 +32,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
     console.log('🚀 Starting Google Calendar MCP server...');
     serverProcess = spawn('node', ['build/index.js'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env }
+      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
     });
 
     // Wait for server to start
@@ -51,7 +51,8 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
     // Connect to server
     const transport = new StdioClientTransport({
       command: 'node',
-      args: ['build/index.js']
+      args: ['build/index.js'],
+      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
     });
     
     await client.connect(transport);

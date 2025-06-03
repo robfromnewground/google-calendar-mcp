@@ -15,13 +15,15 @@ export const RemindersSchema = z.object({
 // Centralized RFC3339 datetime schema that matches Google Calendar API requirements exactly
 // Google Calendar API documentation states: "Must be an RFC3339 timestamp with mandatory time zone offset"
 // Examples: 2011-06-03T10:00:00-07:00, 2011-06-03T10:00:00Z
+// Enhanced for better OpenAI compatibility with explicit format constraints
 export const RFC3339DateTimeSchema = z.string()
   .datetime({ offset: true })
-  .describe("REQUIRED: RFC3339 datetime with mandatory timezone offset. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). Do NOT use '2024-01-01T10:00:00' without timezone.");
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/, "Must be RFC3339 format with timezone: YYYY-MM-DDTHH:mm:ss(Z|±HH:mm)")
+  .describe("CRITICAL: RFC3339 datetime with MANDATORY timezone. Format: 'YYYY-MM-DDTHH:mm:ss' followed by 'Z' (UTC) or '±HH:mm' (offset). Examples: '2024-01-01T10:00:00Z' or '2024-01-01T10:00:00-08:00'. NEVER use '2024-01-01T10:00:00' without timezone.");
 
 // Unified time boundary schemas for consistent usage across tools
-export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary - REQUIRED: RFC3339 format with timezone (e.g., '2024-01-01T00:00:00Z' or '2024-01-01T00:00:00-08:00')");
-export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary - REQUIRED: RFC3339 format with timezone (e.g., '2024-01-01T23:59:59Z' or '2024-01-01T23:59:59-08:00')");
+export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary - CRITICAL: Must include timezone. Valid formats: '2024-01-01T00:00:00Z' (UTC) or '2024-01-01T00:00:00-08:00' (Pacific). NEVER omit timezone.");
+export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary - CRITICAL: Must include timezone. Valid formats: '2024-01-01T23:59:59Z' (UTC) or '2024-01-01T23:59:59-08:00' (Pacific). NEVER omit timezone.");
 
 export const ListEventsArgumentsSchema = z.object({
   calendarId: z.union([

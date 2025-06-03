@@ -24,6 +24,9 @@
     "test:watch:all": "vitest",
     "test:integration:direct": "vitest run src/integration/direct-integration.test.ts",
     "test:integration:claude-mcp": "vitest run src/integration/claude-mcp-integration.test.ts",
+    "test:integration:openai-mcp": "vitest run src/integration/openai-mcp-integration.test.ts",
+    "test:integration:openai-observability-demo": "LLM_DEBUG_LOGGING=true node build/integration/demo-observability.js",
+    "test:integration:multi-provider": "vitest run src/integration/multi-provider-integration.test.ts",
     "test:integration:all": "vitest run src/integration/",
     "coverage": "vitest run --coverage"
   },
@@ -40,6 +43,7 @@
     "@types/node": "^20.10.4",
     "@vitest/coverage-v8": "^3.1.1",
     "esbuild": "^0.25.0",
+    "openai": "^4.104.0",
     "typescript": "^5.3.3",
     "vitest": "^3.1.1"
   }
