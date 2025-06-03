@@ -139,8 +139,8 @@ npm run test:integration:all
 
 Use the `GOOGLE_ACCOUNT_MODE` environment variable to control which account to use:
 
-- `GOOGLE_ACCOUNT_MODE=test` (default): Use your test account
-- `GOOGLE_ACCOUNT_MODE=normal`: Use your normal account
+- `GOOGLE_ACCOUNT_MODE=normal` (default): Use your normal account
+- `GOOGLE_ACCOUNT_MODE=test`: Use your test account
 
 ### Benefits
 
@@ -254,23 +254,36 @@ See `src/integration/README.md` for detailed test documentation.
 
 ### Docker Deployment
 
-Build and run the HTTP transport version using Docker:
+**Prerequisites:**
+1. Place your `gcp-oauth.keys.json` file in the project root (see Google Cloud Setup)
+2. Authenticate once: `npm run auth` (creates `.gcp-saved-tokens.json`)
+3. Build the Docker image: `docker compose build server`
 
-```bash
-# Build the Docker image
-docker build -f Dockerfile.http -t google-calendar-mcp:http .
-
-# Run with volume mount for OAuth credentials
-docker run -d \
-  --name google-calendar-mcp \
-  -p 3000:3000 \
-  -v $(pwd)/gcp-oauth.keys.json:/app/gcp-oauth.keys.json:ro \
-  -v $(pwd)/.gcp-saved-tokens.json:/app/.gcp-saved-tokens.json \
-  google-calendar-mcp:http
-
-# Check health
-curl http://localhost:3000/health
+**Claude Desktop Configuration:**
+Add this to your Claude Desktop config (e.g., `~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "google-calendar": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--mount",
+        "type=bind,src=<absolute-path-to-project>/gcp-oauth.keys.json,dst=/usr/src/app/gcp-oauth.keys.json",
+        "--mount",
+        "type=bind,src=<absolute-path-to-project>/.gcp-saved-tokens.json,dst=/usr/src/app/.gcp-saved-tokens.json",
+        "google-calendar-mcp-server"
+      ]
+    }
+  }
+}
 ```
+Replace `<absolute-path-to-project>` with your actual project path for both the keys and token files.
+
+**⚠️ Token Expiration:** OAuth tokens expire after 7 days in test mode. When they expire, run `npm run auth` on the host machine to refresh tokens since this requires completing the broswer based OAuth flow.
+
 
 ### Cloud Deployment
 

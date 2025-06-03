@@ -7,32 +7,16 @@
     "google-calendar-mcp": "./build/index.js"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && node scripts/build.js",
     "start": "node build/index.js",
-    "start:http": "node build/index.js --transport http --port 3000",
-    "start:http:public": "node build/index.js --transport http --port 3000 --host 0.0.0.0",
-    "auth": "GOOGLE_ACCOUNT_MODE=normal node build/auth-server.js",
-    "auth:test": "node build/auth-server.js",
-    "account:status": "node scripts/account-manager.js status",
-    "account:clear:normal": "node scripts/account-manager.js clear normal",
-    "account:clear:test": "node scripts/account-manager.js clear test",
-    "postinstall": "scripts/build.js",
-    "test": "vitest run --exclude '**/integration/**'",
-    "test:all": "vitest run",
-    "test:watch": "vitest",
-    "test:watch:all": "vitest",
-    "test:integration:direct": "vitest run src/integration/direct-integration.test.ts",
-    "test:integration:claude-mcp": "vitest run src/integration/claude-mcp-integration.test.ts",
-    "test:integration:openai-mcp": "vitest run src/integration/openai-mcp-integration.test.ts",
-    "test:integration:openai-observability-demo": "LLM_DEBUG_LOGGING=true node build/integration/demo-observability.js",
-    "test:integration:multi-provider": "vitest run src/integration/multi-provider-integration.test.ts",
-    "test:integration:all": "vitest run src/integration/",
-    "coverage": "vitest run --coverage"
+    "build": "node scripts/build.js",
+    "auth": "node build/auth-server.js",
+    "dev": "node scripts/dev.js",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "esbuild": "^0.25.0",
     "google-auth-library": "^9.15.0",
     "googleapis": "^144.0.0",
     "open": "^7.4.2",
@@ -42,9 +26,16 @@
     "@anthropic-ai/sdk": "^0.52.0",
     "@types/node": "^20.10.4",
     "@vitest/coverage-v8": "^3.1.1",
-    "esbuild": "^0.25.0",
     "openai": "^4.104.0",
     "typescript": "^5.3.3",
     "vitest": "^3.1.1"
-  }
+  },
+  "files": [
+    "build/",
+    "scripts/build.js",
+    "scripts/dev.js",
+    "README.md",
+    "LICENSE",
+    "gcp-oauth.keys.example.json"
+  ]
 }

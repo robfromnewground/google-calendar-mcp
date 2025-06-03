@@ -166,7 +166,7 @@ async function authenticateAccount(accountMode) {
 async function showStatus() {
   log('\n' + colorize('bright', '📊 Account Status:'));
   
-  const currentMode = process.env.GOOGLE_ACCOUNT_MODE || 'test';
+  const currentMode = process.env.GOOGLE_ACCOUNT_MODE || 'normal';
   log(`  Current Mode: ${colorize('cyan', currentMode)}`);
   
   await listAccounts();
@@ -256,7 +256,7 @@ function showUsage() {
   log('  node scripts/account-manager.js test          # Run tests with test account');
   log('  node scripts/account-manager.js status        # Check account status');
   log('\n' + colorize('bright', 'Environment Variables:'));
-  log('  GOOGLE_ACCOUNT_MODE     Set to "test" or "normal" (default: test)');
+  log('  GOOGLE_ACCOUNT_MODE     Set to "test" or "normal" (default: normal)');
   log('  TEST_CALENDAR_ID        Calendar ID to use for testing');
   log('  INVITEE_1, INVITEE_2    Email addresses for testing invitations');
   log('  CLAUDE_API_KEY          API key for Claude integration tests');

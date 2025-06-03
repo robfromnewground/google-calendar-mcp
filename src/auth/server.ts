@@ -102,7 +102,7 @@ export class AuthServer {
         } catch (error: unknown) {
           this.authCompletedSuccessfully = false;
           const message = error instanceof Error ? error.message : 'Unknown error';
-          console.error('✗ Token save failed:', message);
+          process.stderr.write(`✗ Token save failed: ${message}\n`);
 
           res.writeHead(500, { 'Content-Type': 'text/html' });
           res.end(`
@@ -252,7 +252,7 @@ export class AuthServer {
         
         // Add a timeout to force close if server doesn't close gracefully
         const timeout = setTimeout(() => {
-          console.error('Server close timeout, forcing exit...');
+          process.stderr.write('Server close timeout, forcing exit...\n');
           this.server = null;
           resolve();
         }, 2000); // 2 second timeout

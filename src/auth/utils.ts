@@ -13,10 +13,10 @@ function getProjectRoot(): string {
 // Get the current account mode (normal or test)
 export function getAccountMode(): 'normal' | 'test' {
   const mode = process.env.GOOGLE_ACCOUNT_MODE?.toLowerCase();
-  if (mode === 'normal') {
-    return 'normal';
+  if (mode === 'test') {
+    return 'test';
   }
-  return 'test'; // Default to test for safer development
+  return 'normal'; // Default to normal for regular usage
 }
 
 // Returns the absolute path for the saved token file.
