@@ -12,6 +12,7 @@ export class AuthServer {
   private server: http.Server | null = null;
   private tokenManager: TokenManager;
   private portRange: { start: number; end: number };
+  private activeConnections: Set<import('net').Socket> = new Set(); // Track active socket connections
   public authCompletedSuccessfully = false; // Flag for standalone script
 
   constructor(oauth2Client: OAuth2Client) {
@@ -21,7 +22,7 @@ export class AuthServer {
   }
 
   private createServer(): http.Server {
-    return http.createServer(async (req, res) => {
+    const server = http.createServer(async (req, res) => {
       const url = new URL(req.url || '/', `http://${req.headers.host}`);
       
       if (url.pathname === '/') {
@@ -101,7 +102,8 @@ export class AuthServer {
         } catch (error: unknown) {
           this.authCompletedSuccessfully = false;
           const message = error instanceof Error ? error.message : 'Unknown error';
-          
+          console.error('✗ Token save failed:', message);
+
           res.writeHead(500, { 'Content-Type': 'text/html' });
           res.end(`
             <!DOCTYPE html>
@@ -134,6 +136,16 @@ export class AuthServer {
         res.end('Not Found');
       }
     });
+
+    // Track connections at server level
+    server.on('connection', (socket) => {
+      this.activeConnections.add(socket);
+      socket.on('close', () => {
+        this.activeConnections.delete(socket);
+      });
+    });
+    
+    return server;
   }
 
   async start(openBrowser = true): Promise<boolean> {
@@ -232,7 +244,21 @@ export class AuthServer {
   async stop(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.server) {
+        // Force close all active connections
+        for (const connection of this.activeConnections) {
+          connection.destroy();
+        }
+        this.activeConnections.clear();
+        
+        // Add a timeout to force close if server doesn't close gracefully
+        const timeout = setTimeout(() => {
+          console.error('Server close timeout, forcing exit...');
+          this.server = null;
+          resolve();
+        }, 2000); // 2 second timeout
+        
         this.server.close((err) => {
+          clearTimeout(timeout);
           if (err) {
             reject(err);
           } else {
