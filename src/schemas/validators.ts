@@ -17,11 +17,11 @@ export const RemindersSchema = z.object({
 // Examples: 2011-06-03T10:00:00-07:00, 2011-06-03T10:00:00Z
 export const RFC3339DateTimeSchema = z.string()
   .datetime({ offset: true })
-  .describe("Must be RFC3339 format with mandatory timezone offset (e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00-07:00)");
+  .describe("REQUIRED: RFC3339 datetime with mandatory timezone offset. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). Do NOT use '2024-01-01T10:00:00' without timezone.");
 
 // Unified time boundary schemas for consistent usage across tools
-export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary (RFC3339 format with timezone, e.g., 2024-01-01T00:00:00Z)");
-export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary (RFC3339 format with timezone, e.g., 2024-01-01T23:59:59Z)");
+export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary - REQUIRED: RFC3339 format with timezone (e.g., '2024-01-01T00:00:00Z' or '2024-01-01T00:00:00-08:00')");
+export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary - REQUIRED: RFC3339 format with timezone (e.g., '2024-01-01T23:59:59Z' or '2024-01-01T23:59:59-08:00')");
 
 export const ListEventsArgumentsSchema = z.object({
   calendarId: z.union([

@@ -101,11 +101,55 @@ Along with the normal capabilities you would expect for a calendar integration y
 - `npm run typecheck` - Run TypeScript type checking without compiling
 - `npm run start` - Start the MCP server in stdio mode (default)
 - `npm run start:http` - Start the MCP server in HTTP mode on localhost:3000
-- `npm run start:http:remote` - Start the MCP server in HTTP mode accessible from any host
-- `npm run auth` - Manually run the Google OAuth authentication flow.
-- `npm test` - Run the unit/integration test suite using Vitest
-- `npm run test:watch` - Run tests in watch mode
+- `npm run start:http:public` - Start the MCP server in HTTP mode accessible from any host
+- `npm run auth` - Authenticate normal account (sets GOOGLE_ACCOUNT_MODE=normal)
+- `npm run auth:test` - Authenticate test account
+- `npm run account:status` - Show account status and configuration
+- `npm run account:clear:normal` - Clear normal account tokens
+- `npm run account:clear:test` - Clear test account tokens
+- `npm test` - Run unit tests only (excludes integration tests)
+- `npm run test:all` - Run all tests including integration tests
+- `npm run test:watch` - Run unit tests in watch mode
+- `npm run test:watch:all` - Run all tests in watch mode
+- `npm run test:integration:direct` - Run core integration tests (recommended for development)
+- `npm run test:integration:all` - Run complete integration test suite
+- `npm run test:integration:claude-mcp` - Run Claude + MCP end-to-end integration tests
 - `npm run coverage` - Run tests and generate a coverage report
+
+## Multi-Account OAuth Management
+
+The server now supports managing OAuth tokens for multiple Google accounts, making it easy to separate your normal account from your test account. The integration tests are meant to be run against a test gmail account rather than
+your normal calendar.
+
+### Quick Start
+
+```bash
+# Authenticate both accounts
+npm run auth        # Authenticate your normal account
+npm run auth:test   # Authenticate your test account
+
+# Check status
+npm run account:status
+
+# Run tests with test account
+npm run test:integration:all
+```
+
+### Account Modes
+
+Use the `GOOGLE_ACCOUNT_MODE` environment variable to control which account to use:
+
+- `GOOGLE_ACCOUNT_MODE=test` (default): Use your test account
+- `GOOGLE_ACCOUNT_MODE=normal`: Use your normal account
+
+### Benefits
+
+- **Separation of Concerns**: Keep your personal calendar separate from test data
+- **Safe Testing**: Run integration tests without affecting your real calendar
+- **Easy Switching**: Toggle between accounts using environment variables or npm scripts
+- **Shared Configuration**: Both accounts use the same `gcp-oauth.keys.json` file
+
+For detailed setup and usage instructions, see [docs/multi-account-setup.md](docs/multi-account-setup.md).
 
 ## Command Line Options
 
@@ -165,6 +209,47 @@ If you need to re-authenticate or prefer to handle authentication separately:
 - The server attempts to automatically refresh expired access tokens using the stored refresh token.
 - If the refresh token itself expires (e.g., after 7 days if the Google Cloud app is in testing mode) or is revoked, you will need to re-authenticate using either the automatic flow (by restarting the server) or the manual `npm run auth` command.
 
+## Integration Testing
+
+This project includes comprehensive integration tests that validate the MCP server against real Google Calendar operations and Claude natural language processing.
+
+### Quick Testing
+```bash
+# Fast core integration tests (~15 seconds)
+npm run test:integration:direct
+
+# Complete test suite including Claude integration (~60 seconds)  
+npm run test:integration:all
+```
+
+### Test Levels
+
+1. **Core MCP Tool Tests** (`test:integration:direct`)
+   - Tests all MCP tools against live Google Calendar API
+   - Validates CRUD workflows and performance
+   - **Recommended for regular development**
+
+2. **Claude + MCP Integration Tests** (`test:integration:claude-mcp`)
+   - **Full Claude + MCP server integration**
+   - Claude actually executes real calendar operations
+   - Tests complex multi-step workflows
+   - **Most comprehensive validation**
+
+3. **Complete Integration Suite** (`test:integration:all`)
+   - Runs all integration tests
+   - Includes both direct API tests and Claude integration
+
+### Setup for Integration Tests
+1. Configure Google Calendar OAuth (see Authentication section)
+2. Add Claude API key to `.env` file:
+   ```env
+   CLAUDE_API_KEY={your_api_key_here}
+   ANTHROPIC_MODEL=claude-3-5-haiku-20241022
+   ```
+3. Run tests: `npm run test:integration:all`
+
+See `src/integration/README.md` for detailed test documentation.
+
 ## Remote Deployment
 
 ### Docker Deployment
@@ -217,11 +302,16 @@ When deploying remotely:
 
 Unit and integration tests are implemented using [Vitest](https://vitest.dev/).
 
-- Run tests: `npm test`
-- Run tests in watch mode: `npm run test:watch`
-- Generate coverage report: `npm run coverage`
+### Unit Tests
+- **Run unit tests**: `npm test` (excludes integration tests)
+- **Watch mode**: `npm run test:watch`
+- **Coverage**: `npm run coverage`
 
-Tests mock external dependencies (Google API, filesystem) to ensure isolated testing of server logic and handlers.
+### All Tests (Unit + Integration)
+- **Run all tests**: `npm run test:all`
+- **Watch mode**: `npm run test:watch:all`
+
+Unit tests mock external dependencies (Google API, filesystem) to ensure isolated testing of server logic and handlers, while integration tests run against real Google Calendar APIs.
 
 ## Security Notes
 

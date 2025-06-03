@@ -1,23 +1,41 @@
 import { OAuth2Client, Credentials } from 'google-auth-library';
 import fs from 'fs/promises';
-import { getSecureTokenPath } from './utils.js';
+import { getSecureTokenPath, getAccountMode } from './utils.js';
 import { GaxiosError } from 'gaxios';
 import { mkdir } from 'fs/promises';
 import { dirname } from 'path';
 
+// Interface for multi-account token storage
+interface MultiAccountTokens {
+  normal?: Credentials;
+  test?: Credentials;
+}
+
 export class TokenManager {
   private oauth2Client: OAuth2Client;
   private tokenPath: string;
+  private accountMode: 'normal' | 'test';
 
   constructor(oauth2Client: OAuth2Client) {
     this.oauth2Client = oauth2Client;
     this.tokenPath = getSecureTokenPath();
+    this.accountMode = getAccountMode();
     this.setupTokenRefresh();
   }
 
   // Method to expose the token path
   public getTokenPath(): string {
     return this.tokenPath;
+  }
+
+  // Method to get current account mode
+  public getAccountMode(): 'normal' | 'test' {
+    return this.accountMode;
+  }
+
+  // Method to switch account mode (useful for testing)
+  public setAccountMode(mode: 'normal' | 'test'): void {
+    this.accountMode = mode;
   }
 
   private async ensureTokenDirectoryExists(): Promise<void> {
@@ -28,26 +46,64 @@ export class TokenManager {
     }
   }
 
+  private async loadMultiAccountTokens(): Promise<MultiAccountTokens> {
+    try {
+      const fileContent = await fs.readFile(this.tokenPath, "utf-8");
+      const parsed = JSON.parse(fileContent);
+      
+      // Check if this is the old single-account format
+      if (parsed.access_token || parsed.refresh_token) {
+        // Convert old format to new multi-account format
+        const multiAccountTokens: MultiAccountTokens = {
+          normal: parsed
+        };
+        await this.saveMultiAccountTokens(multiAccountTokens);
+        return multiAccountTokens;
+      }
+      
+      // Already in multi-account format
+      return parsed as MultiAccountTokens;
+    } catch (error: unknown) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        // File doesn't exist, return empty structure
+        return {};
+      }
+      throw error;
+    }
+  }
+
+  private async saveMultiAccountTokens(multiAccountTokens: MultiAccountTokens): Promise<void> {
+    await this.ensureTokenDirectoryExists();
+    await fs.writeFile(this.tokenPath, JSON.stringify(multiAccountTokens, null, 2), {
+      mode: 0o600,
+    });
+  }
+
   private setupTokenRefresh(): void {
     this.oauth2Client.on("tokens", async (newTokens) => {
       try {
-        await this.ensureTokenDirectoryExists();
-        const currentTokens = JSON.parse(await fs.readFile(this.tokenPath, "utf-8"));
+        const multiAccountTokens = await this.loadMultiAccountTokens();
+        const currentTokens = multiAccountTokens[this.accountMode] || {};
+        
         const updatedTokens = {
           ...currentTokens,
           ...newTokens,
           refresh_token: newTokens.refresh_token || currentTokens.refresh_token,
         };
-        await fs.writeFile(this.tokenPath, JSON.stringify(updatedTokens, null, 2), {
-          mode: 0o600,
-        });
-        process.stderr.write("Tokens updated and saved\n");
+        
+        multiAccountTokens[this.accountMode] = updatedTokens;
+        await this.saveMultiAccountTokens(multiAccountTokens);
+        
+        process.stderr.write(`Tokens updated and saved for ${this.accountMode} account\n`);
       } catch (error: unknown) {
-        // Handle case where currentTokens might not exist yet
+        // Handle case where file might not exist yet
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') { 
           try {
-             await fs.writeFile(this.tokenPath, JSON.stringify(newTokens, null, 2), { mode: 0o600 });
-             process.stderr.write("New tokens saved\n");
+            const multiAccountTokens: MultiAccountTokens = {
+              [this.accountMode]: newTokens
+            };
+            await this.saveMultiAccountTokens(multiAccountTokens);
+            process.stderr.write(`New tokens saved for ${this.accountMode} account\n`);
           } catch (writeError) {
             process.stderr.write("Error saving initial tokens: ");
             if (writeError) {
@@ -56,13 +112,13 @@ export class TokenManager {
             process.stderr.write("\n");
           }
         } else {
-            process.stderr.write("Error saving updated tokens: ");
-            if (error instanceof Error) {
-              process.stderr.write(error.message);
-            } else if (typeof error === 'string') {
-              process.stderr.write(error);
-            }
-            process.stderr.write("\n");
+          process.stderr.write("Error saving updated tokens: ");
+          if (error instanceof Error) {
+            process.stderr.write(error.message);
+          } else if (typeof error === 'string') {
+            process.stderr.write(error);
+          }
+          process.stderr.write("\n");
         }
       }
     });
@@ -81,17 +137,19 @@ export class TokenManager {
         return false;
       }
 
-      const tokens = JSON.parse(await fs.readFile(this.tokenPath, "utf-8"));
+      const multiAccountTokens = await this.loadMultiAccountTokens();
+      const tokens = multiAccountTokens[this.accountMode];
 
       if (!tokens || typeof tokens !== "object") {
-        process.stderr.write(`Invalid token format in file: ${this.tokenPath}\n`);
+        process.stderr.write(`No tokens found for ${this.accountMode} account in file: ${this.tokenPath}\n`);
         return false;
       }
 
       this.oauth2Client.setCredentials(tokens);
+      process.stderr.write(`Loaded tokens for ${this.accountMode} account\n`);
       return true;
     } catch (error: unknown) {
-      process.stderr.write("Error loading tokens: ");
+      process.stderr.write(`Error loading tokens for ${this.accountMode} account: `);
       if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') { 
           try { 
               await fs.unlink(this.tokenPath); 
@@ -109,7 +167,7 @@ export class TokenManager {
       : !this.oauth2Client.credentials.access_token; // No token means we need one
 
     if (isExpired && this.oauth2Client.credentials.refresh_token) {
-      process.stderr.write("Auth token expired or nearing expiry, refreshing...\n");
+      process.stderr.write(`Auth token expired or nearing expiry for ${this.accountMode} account, refreshing...\n`);
       try {
         const response = await this.oauth2Client.refreshAccessToken();
         const newTokens = response.credentials;
@@ -119,17 +177,15 @@ export class TokenManager {
         }
         // The 'tokens' event listener should handle saving
         this.oauth2Client.setCredentials(newTokens);
-        process.stderr.write("Token refreshed successfully\n");
+        process.stderr.write(`Token refreshed successfully for ${this.accountMode} account\n`);
         return true;
       } catch (refreshError) {
         if (refreshError instanceof GaxiosError && refreshError.response?.data?.error === 'invalid_grant') {
-            process.stderr.write("Error refreshing auth token: Invalid grant. Token likely expired or revoked. Please re-authenticate.\n");
-            // Optionally clear the potentially invalid tokens here
-            // await this.clearTokens(); 
+            process.stderr.write(`Error refreshing auth token for ${this.accountMode} account: Invalid grant. Token likely expired or revoked. Please re-authenticate.\n`);
             return false; // Indicate failure due to invalid grant
         } else {
             // Handle other refresh errors
-            process.stderr.write("Error refreshing auth token: ");
+            process.stderr.write(`Error refreshing auth token for ${this.accountMode} account: `);
             if (refreshError instanceof Error) {
               process.stderr.write(refreshError.message);
             } else if (typeof refreshError === 'string') {
@@ -140,7 +196,7 @@ export class TokenManager {
         }
       }
     } else if (!this.oauth2Client.credentials.access_token && !this.oauth2Client.credentials.refresh_token) {
-        process.stderr.write("No access or refresh token available. Please re-authenticate.\n");
+        process.stderr.write(`No access or refresh token available for ${this.accountMode} account. Please re-authenticate.\n`);
         return false;
     } else {
         // Token is valid or no refresh token available
@@ -164,12 +220,14 @@ export class TokenManager {
 
   async saveTokens(tokens: Credentials): Promise<void> {
     try {
-        await this.ensureTokenDirectoryExists();
-        await fs.writeFile(this.tokenPath, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+        const multiAccountTokens = await this.loadMultiAccountTokens();
+        multiAccountTokens[this.accountMode] = tokens;
+        
+        await this.saveMultiAccountTokens(multiAccountTokens);
         this.oauth2Client.setCredentials(tokens);
-        process.stderr.write(`Tokens saved successfully to: ${this.tokenPath}\n`);
+        process.stderr.write(`Tokens saved successfully for ${this.accountMode} account to: ${this.tokenPath}\n`);
     } catch (error: unknown) {
-        process.stderr.write(`Error saving tokens: ${error}\n`);
+        process.stderr.write(`Error saving tokens for ${this.accountMode} account: ${error}\n`);
         throw error;
     }
   }
@@ -177,16 +235,42 @@ export class TokenManager {
   async clearTokens(): Promise<void> {
     try {
       this.oauth2Client.setCredentials({}); // Clear in memory
-      await fs.unlink(this.tokenPath);
-      process.stderr.write("Tokens cleared successfully\n");
+      
+      const multiAccountTokens = await this.loadMultiAccountTokens();
+      delete multiAccountTokens[this.accountMode];
+      
+      // If no accounts left, delete the entire file
+      if (Object.keys(multiAccountTokens).length === 0) {
+        await fs.unlink(this.tokenPath);
+        process.stderr.write(`All tokens cleared, file deleted\n`);
+      } else {
+        await this.saveMultiAccountTokens(multiAccountTokens);
+        process.stderr.write(`Tokens cleared for ${this.accountMode} account\n`);
+      }
     } catch (error: unknown) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         // File already gone, which is fine
         process.stderr.write("Token file already deleted\n");
       } else {
-        process.stderr.write(`Error clearing tokens: ${error}\n`);
+        process.stderr.write(`Error clearing tokens for ${this.accountMode} account: ${error}\n`);
         // Don't re-throw, clearing is best-effort
       }
     }
+  }
+
+  // Method to list available accounts
+  async listAvailableAccounts(): Promise<string[]> {
+    try {
+      const multiAccountTokens = await this.loadMultiAccountTokens();
+      return Object.keys(multiAccountTokens);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  // Method to switch to a different account (useful for runtime switching)
+  async switchAccount(newMode: 'normal' | 'test'): Promise<boolean> {
+    this.accountMode = newMode;
+    return this.loadSavedTokens();
   }
 } 

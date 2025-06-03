@@ -4,6 +4,7 @@ import http from 'http';
 import { URL } from 'url';
 import open from 'open';
 import { loadCredentials } from './client.js';
+import { getAccountMode } from './utils.js';
 
 export class AuthServer {
   private baseOAuth2Client: OAuth2Client; // Used by TokenManager for validation/refresh
@@ -33,8 +34,15 @@ export class AuthServer {
           prompt: 'consent'
         });
         
+        const accountMode = getAccountMode();
+        
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`<h1>Google Calendar Authentication</h1><a href="${authUrl}">Authenticate with Google</a>`);
+        res.end(`
+          <h1>Google Calendar Authentication</h1>
+          <p><strong>Account Mode:</strong> <code>${accountMode}</code></p>
+          <p>You are authenticating for the <strong>${accountMode}</strong> account.</p>
+          <a href="${authUrl}">Authenticate with Google</a>
+        `);
         
       } else if (url.pathname === '/oauth2callback') {
         // OAuth callback route
@@ -57,6 +65,7 @@ export class AuthServer {
           this.authCompletedSuccessfully = true;
 
           const tokenPath = this.tokenManager.getTokenPath();
+          const accountMode = this.tokenManager.getAccountMode();
           
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(`
@@ -72,12 +81,17 @@ export class AuthServer {
                     h1 { color: #4CAF50; }
                     p { color: #333; margin-bottom: 0.5em; }
                     code { background-color: #eee; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
+                    .account-mode { background-color: #e3f2fd; padding: 1em; border-radius: 5px; margin: 1em 0; }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <h1>Authentication Successful!</h1>
-                    <p>Your authentication tokens have been saved successfully to:</p>
+                    <div class="account-mode">
+                        <p><strong>Account Mode:</strong> <code>${accountMode}</code></p>
+                        <p>Your authentication tokens have been saved for the <strong>${accountMode}</strong> account.</p>
+                    </div>
+                    <p>Tokens saved to:</p>
                     <p><code>${tokenPath}</code></p>
                     <p>You can now close this browser window.</p>
                 </div>

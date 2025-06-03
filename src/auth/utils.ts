@@ -10,6 +10,15 @@ function getProjectRoot(): string {
   return path.resolve(projectRoot); // Ensure absolute path
 }
 
+// Get the current account mode (normal or test)
+export function getAccountMode(): 'normal' | 'test' {
+  const mode = process.env.GOOGLE_ACCOUNT_MODE?.toLowerCase();
+  if (mode === 'normal') {
+    return 'normal';
+  }
+  return 'test'; // Default to test for safer development
+}
+
 // Returns the absolute path for the saved token file.
 export function getSecureTokenPath(): string {
   const projectRoot = getProjectRoot();
@@ -22,4 +31,9 @@ export function getKeysFilePath(): string {
   const projectRoot = getProjectRoot();
   const keysPath = path.join(projectRoot, "gcp-oauth.keys.json"); 
   return keysPath; // Already absolute from getProjectRoot
+}
+
+// Helper to determine if we're currently in test mode
+export function isTestMode(): boolean {
+  return getAccountMode() === 'test';
 } 
