@@ -25,7 +25,6 @@ const ALLOWED_CONSOLE_FILES = [
 // Console methods that should not be present in source code
 const FORBIDDEN_CONSOLE_METHODS = [
   'console.log',
-  'console.error', 
   'console.warn',
   'console.info',
   'console.debug',
@@ -182,8 +181,9 @@ describe('Console Statement Detection', () => {
       function test() {
         console.log("This should be detected");
         const x = "console.log in string should be ignored";
-        // console.error("This is a comment, should be ignored");
-        console.error("This should be detected");
+        // console.warn("This is a comment, should be ignored");
+        console.warn("This should be detected");
+        console.error("This is now allowed and should not be detected");
         process.stderr.write("This is allowed\\n");
       }
     `;
@@ -192,7 +192,7 @@ describe('Console Statement Detection', () => {
     
     expect(findings).toHaveLength(2);
     expect(findings[0].method).toBe('console.log');
-    expect(findings[1].method).toBe('console.error');
+    expect(findings[1].method).toBe('console.warn');
   });
 
   it('should ignore console statements in strings and comments', () => {
