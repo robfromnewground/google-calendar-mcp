@@ -204,18 +204,35 @@ export class TokenManager {
     }
   }
 
-  async validateTokens(): Promise<boolean> {
-    if (!this.oauth2Client.credentials || !this.oauth2Client.credentials.access_token) {
-        // Try loading first if no credentials set
-        if (!(await this.loadSavedTokens())) {
-            return false; // No saved tokens to load
-        }
-        // Check again after loading
-        if (!this.oauth2Client.credentials || !this.oauth2Client.credentials.access_token) {
-            return false; // Still no token after loading
-        }
+  async validateTokens(accountMode?: 'normal' | 'test'): Promise<boolean> {
+    const modeToValidate = accountMode || this.accountMode;
+    const currentMode = this.accountMode;
+    
+    try {
+      // Temporarily switch to the mode we want to validate if different
+      if (modeToValidate !== currentMode) {
+        this.accountMode = modeToValidate;
+      }
+      
+      if (!this.oauth2Client.credentials || !this.oauth2Client.credentials.access_token) {
+          // Try loading first if no credentials set
+          if (!(await this.loadSavedTokens())) {
+              return false; // No saved tokens to load
+          }
+          // Check again after loading
+          if (!this.oauth2Client.credentials || !this.oauth2Client.credentials.access_token) {
+              return false; // Still no token after loading
+          }
+      }
+      
+      const result = await this.refreshTokensIfNeeded();
+      return result;
+    } finally {
+      // Always restore the original account mode
+      if (modeToValidate !== currentMode) {
+        this.accountMode = currentMode;
+      }
     }
-    return this.refreshTokensIfNeeded();
   }
 
   async saveTokens(tokens: Credentials): Promise<void> {
