@@ -4,7 +4,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn, ChildProcess } from 'child_process';
 import { TestDataFactory } from './test-data-factory.js';
-import { LLMObservabilityLogger } from './llm-observability-logger.js';
 
 /**
  * Complete OpenAI GPT + MCP Integration Tests
@@ -34,24 +33,21 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
   private openai: OpenAI;
   private mcpClient: Client;
   private testFactory: TestDataFactory;
-  private observabilityLogger: LLMObservabilityLogger;
   private currentSessionId: string | null = null;
   
   constructor(apiKey: string, mcpClient: Client) {
     this.openai = new OpenAI({ apiKey });
     this.mcpClient = mcpClient;
     this.testFactory = new TestDataFactory();
-    this.observabilityLogger = new LLMObservabilityLogger('./test-logs/openai-mcp');
   }
   
   startTestSession(testName: string): string {
-    this.currentSessionId = this.observabilityLogger.startTestSession(testName);
+    this.currentSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     return this.currentSessionId;
   }
   
   endTestSession(success: boolean = true): void {
     if (this.currentSessionId) {
-      this.observabilityLogger.endTestSession(this.currentSessionId, success);
       this.currentSessionId = null;
     }
   }
@@ -88,18 +84,6 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
         content: prompt
       }];
 
-      // Log the OpenAI request
-      const requestId = this.observabilityLogger.logOpenAIRequest(
-        this.currentSessionId,
-        prompt,
-        messages,
-        model,
-        { 
-          availableToolsCount: openaiTools.length,
-          toolNames: openaiTools.map(t => t.function.name)
-        }
-      );
-
       // Send message to OpenAI with tools
       const startTime = Date.now();
       const completion = await this.openai.chat.completions.create({
@@ -109,14 +93,6 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
         tool_choice: 'auto',
         messages
       });
-      
-      // Log the OpenAI response with timing and usage information
-      this.observabilityLogger.logOpenAIResponse(
-        this.currentSessionId,
-        requestId,
-        completion,
-        completion.usage
-      );
       
       const message = completion.choices[0]?.message;
       if (!message) {
@@ -141,13 +117,6 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
       // Execute tool calls against MCP server
       const executedResults: Array<{ toolCall: ToolCall; result: any; success: boolean }> = [];
       for (const toolCall of toolCalls) {
-        const mcpCallId = this.observabilityLogger.logMCPToolCall(
-          this.currentSessionId,
-          toolCall.name,
-          toolCall.arguments,
-          { originalToolCallId: toolCall.name }
-        );
-
         try {
           const startTime = this.testFactory.startTimer(`mcp-${toolCall.name}`);
           
@@ -159,14 +128,6 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
           });
           
           this.testFactory.endTimer(`mcp-${toolCall.name}`, startTime, true);
-          
-          // Log successful MCP tool response
-          this.observabilityLogger.logMCPToolResponse(
-            this.currentSessionId,
-            mcpCallId,
-            result,
-            true
-          );
           
           executedResults.push({
             toolCall,
@@ -189,123 +150,59 @@ class RealOpenAIMCPClient implements OpenAIMCPClient {
           const startTime = this.testFactory.startTimer(`mcp-${toolCall.name}`);
           this.testFactory.endTimer(`mcp-${toolCall.name}`, startTime, false, String(error));
           
-          // Log failed MCP tool response
-          this.observabilityLogger.logMCPToolResponse(
-            this.currentSessionId,
-            mcpCallId,
-            null,
-            false,
-            String(error)
-          );
-          
-          // Log the error for detailed debugging
-          this.observabilityLogger.logError(
-            this.currentSessionId,
-            error instanceof Error ? error : new Error(String(error)),
-            { 
-              toolCall,
-              phase: 'mcp_tool_execution'
-            }
-          );
-          
           executedResults.push({
             toolCall,
-            result: { error: String(error) },
+            result: null,
             success: false
           });
           
-          console.log(`❌ ${toolCall.name} failed:`, String(error));
+          console.log(`❌ ${toolCall.name} failed:`, error);
         }
       }
       
-      // If OpenAI used tools, send results back for final response
-      if (toolCalls.length > 0 && message.tool_calls) {
-        // Create tool results in the format OpenAI expects
-        const toolMessages: OpenAI.Chat.Completions.ChatCompletionToolMessageParam[] = [];
-        
-        message.tool_calls.forEach((toolCall, index) => {
-          const correspondingResult = executedResults[index];
-          toolMessages.push({
-            role: 'tool',
+      // If we have tool results, send a follow-up to OpenAI for final response
+      if (toolCalls.length > 0) {
+        const toolMessages = message.tool_calls?.map((toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall, index: number) => {
+          const executedResult = executedResults[index];
+          return {
+            role: 'tool' as const,
             tool_call_id: toolCall.id,
-            content: JSON.stringify(correspondingResult?.result || { error: 'No result' })
-          });
-        });
+            content: JSON.stringify(executedResult.result)
+          };
+        }) || [];
         
         const followUpMessages = [
-          {
-            role: 'user' as const,
-            content: prompt
-          },
-          {
-            role: 'assistant' as const,
-            content: message.content,
-            tool_calls: message.tool_calls
-          },
+          ...messages,
+          message,
           ...toolMessages
         ];
-
-        // Log the follow-up request
-        const followUpRequestId = this.observabilityLogger.logOpenAIRequest(
-          this.currentSessionId,
-          `Follow-up after ${toolCalls.length} tool calls`,
-          followUpMessages,
-          model,
-          { 
-            isFollowUp: true,
-            originalToolCalls: toolCalls.length,
-            toolResults: executedResults.map(r => ({ tool: r.toolCall.name, success: r.success }))
-          }
-        );
         
         const followUpCompletion = await this.openai.chat.completions.create({
           model: model,
-          max_tokens: 1000,
+          max_tokens: 1500,
           messages: followUpMessages
         });
         
-        // Log the follow-up response
-        this.observabilityLogger.logOpenAIResponse(
-          this.currentSessionId,
-          followUpRequestId,
-          followUpCompletion,
-          followUpCompletion.usage
-        );
-        
-        // Extract final response
         const followUpMessage = followUpCompletion.choices[0]?.message;
         if (followUpMessage?.content) {
           textContent = followUpMessage.content;
         }
+        
+        return {
+          content: textContent,
+          toolCalls,
+          executedResults
+        };
       }
-      
-      // Log test context for this interaction
-      this.observabilityLogger.logTestContext(this.currentSessionId, {
-        originalPrompt: prompt,
-        finalResponse: textContent,
-        toolCallsExecuted: toolCalls.length,
-        successfulToolCalls: executedResults.filter(r => r.success).length,
-        failedToolCalls: executedResults.filter(r => !r.success).length,
-        totalInteractionTime: Date.now() - startTime
-      });
       
       return {
         content: textContent,
-        toolCalls,
-        executedResults
+        toolCalls: [],
+        executedResults: []
       };
       
     } catch (error) {
-      // Log any top-level errors
-      this.observabilityLogger.logError(
-        this.currentSessionId,
-        error instanceof Error ? error : new Error(String(error)),
-        { 
-          prompt,
-          phase: 'sendMessage_top_level'
-        }
-      );
-      
+      console.error('❌ OpenAI MCP Client Error:', error);
       throw error;
     }
   }
@@ -406,9 +303,6 @@ describe('Complete OpenAI GPT + MCP Integration Tests', () => {
   beforeAll(async () => {
     console.log('🚀 Starting complete OpenAI GPT + MCP integration tests...');
     
-    // Enable debug logging for detailed observability
-    LLMObservabilityLogger.enableDebugMode();
-    
     // Validate required environment variables
     if (!TEST_CALENDAR_ID) {
       throw new Error('TEST_CALENDAR_ID environment variable is required');
@@ -419,9 +313,16 @@ describe('Complete OpenAI GPT + MCP Integration Tests', () => {
 
     // Start the MCP server
     console.log('🔌 Starting MCP server...');
+    
+    // Filter out undefined values from process.env and set NODE_ENV=test
+    const cleanEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([_, value]) => value !== undefined)
+    ) as Record<string, string>;
+    cleanEnv.NODE_ENV = 'test';
+    
     serverProcess = spawn('node', ['build/index.js'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
+      env: cleanEnv
     });
 
     // Wait for server to start
@@ -441,7 +342,7 @@ describe('Complete OpenAI GPT + MCP Integration Tests', () => {
     const transport = new StdioClientTransport({
       command: 'node',
       args: ['build/index.js'],
-      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
+      env: cleanEnv
     });
     
     await mcpClient.connect(transport);

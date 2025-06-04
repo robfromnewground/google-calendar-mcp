@@ -12,11 +12,25 @@ function getProjectRoot(): string {
 
 // Get the current account mode (normal or test)
 export function getAccountMode(): 'normal' | 'test' {
-  const mode = process.env.GOOGLE_ACCOUNT_MODE?.toLowerCase();
-  if (mode === 'test') {
+  // If set explicitly via environment variable use that instead
+  const explicitMode = process.env.GOOGLE_ACCOUNT_MODE?.toLowerCase();
+  if (explicitMode === 'test' || explicitMode === 'normal') {
+    return explicitMode;
+  }
+  
+  // Auto-detect test environment
+  if (isRunningInTestEnvironment()) {
     return 'test';
   }
-  return 'normal'; // Default to normal for regular usage
+  
+  // Default to normal for regular app usage
+  return 'normal';
+}
+
+// Helper to detect if we're running in a test environment
+function isRunningInTestEnvironment(): boolean {
+  // Simple and reliable: just check NODE_ENV
+  return process.env.NODE_ENV === 'test';
 }
 
 // Returns the absolute path for the saved token file.

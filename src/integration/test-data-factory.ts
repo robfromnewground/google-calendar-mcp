@@ -30,14 +30,18 @@ export interface PerformanceMetric {
 }
 
 export class TestDataFactory {
-  private static readonly TEST_CALENDAR_ID = process.env.TEST_CALENDAR_ID || 
-    'd1a3ca0a4fea37aaf5a51f5f51fc8a8a683dd6e54f493896d340dae0ad346a78@group.calendar.google.com';
+  private static readonly TEST_CALENDAR_ID = process.env.TEST_CALENDAR_ID || 'primary';
   
   private createdEventIds: string[] = [];
   private performanceMetrics: PerformanceMetric[] = [];
 
   static getTestCalendarId(): string {
     return TestDataFactory.TEST_CALENDAR_ID;
+  }
+
+  // Helper method to format dates in RFC3339 format without milliseconds
+  public static formatDateTimeRFC3339(date: Date): string {
+    return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
 
   // Event data generators
@@ -49,8 +53,8 @@ export class TestDataFactory {
     return {
       summary: 'Test Integration Event',
       description: 'Created by integration test suite',
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: this.formatDateTimeRFC3339(start),
+      end: this.formatDateTimeRFC3339(end),
       timeZone: 'America/Los_Angeles',
       location: 'Test Conference Room',
       reminders: {
@@ -73,8 +77,8 @@ export class TestDataFactory {
     return {
       summary: 'Test All-Day Event',
       description: 'All-day test event',
-      start: tomorrow.toISOString(),
-      end: dayAfter.toISOString(),
+      start: this.formatDateTimeRFC3339(tomorrow),
+      end: this.formatDateTimeRFC3339(dayAfter),
       timeZone: 'America/Los_Angeles',
       ...overrides
     };
@@ -91,8 +95,8 @@ export class TestDataFactory {
     return {
       summary: 'Test Recurring Meeting',
       description: 'Weekly recurring test meeting',
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: this.formatDateTimeRFC3339(start),
+      end: this.formatDateTimeRFC3339(end),
       timeZone: 'America/Los_Angeles',
       location: 'Recurring Meeting Room',
       recurrence: ['RRULE:FREQ=WEEKLY;COUNT=5'], // 5 weeks
@@ -137,23 +141,23 @@ export class TestDataFactory {
     return {
       // Past week
       pastWeek: {
-        timeMin: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        timeMax: now.toISOString()
+        timeMin: this.formatDateTimeRFC3339(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
+        timeMax: this.formatDateTimeRFC3339(now)
       },
       // Next week
       nextWeek: {
-        timeMin: now.toISOString(),
-        timeMax: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        timeMin: this.formatDateTimeRFC3339(now),
+        timeMax: this.formatDateTimeRFC3339(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000))
       },
       // Next month
       nextMonth: {
-        timeMin: now.toISOString(),
-        timeMax: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        timeMin: this.formatDateTimeRFC3339(now),
+        timeMax: this.formatDateTimeRFC3339(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000))
       },
       // Large range (3 months)
       threeMonths: {
-        timeMin: now.toISOString(),
-        timeMax: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        timeMin: this.formatDateTimeRFC3339(now),
+        timeMax: this.formatDateTimeRFC3339(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000))
       }
     };
   }
@@ -225,17 +229,25 @@ export class TestDataFactory {
     if (!text) return null;
     
     // Look for various event ID patterns in the response
+    // Google Calendar event IDs can contain letters, numbers, underscores, and special characters
     const patterns = [
-      /Event ID: ([a-zA-Z0-9_-]+)/,
-      /Created event: .* \(ID: ([a-zA-Z0-9_-]+)\)/,
-      /Event created: .* \(([a-zA-Z0-9_-]+)\)/,
-      /\(([a-zA-Z0-9_]{20,})\)/, // Generic long ID pattern in parentheses
-      /ID: ([a-zA-Z0-9_]{10,})/, // Generic ID pattern
+      /Event created: .* \(([^)]+)\)/, // Match anything within parentheses after "Event created:"
+      /Event ID: ([^\s]+)/, // Match non-whitespace characters after "Event ID:"
+      /Created event: .* \(ID: ([^)]+)\)/, // Match anything within parentheses after "ID:"
+      /Event updated: .* \(([^)]+)\)/, // Match anything within parentheses after "Event updated:"
+      /\(([a-zA-Z0-9_@.-]{10,})\)/, // Specific pattern for Google Calendar IDs with common characters
     ];
     
     for (const pattern of patterns) {
       const match = text.match(pattern);
-      if (match) return match[1];
+      if (match && match[1]) {
+        // Clean up the captured ID (trim whitespace)
+        const eventId = match[1].trim();
+        // Basic validation - should be at least 10 characters
+        if (eventId.length >= 10) {
+          return eventId;
+        }
+      }
     }
     
     return null;

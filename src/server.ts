@@ -49,29 +49,30 @@ export class GoogleCalendarMcpServer {
   }
 
   private async handleStartupAuthentication(): Promise<void> {
+    const accountMode = this.tokenManager.getAccountMode();
+    
     if (this.config.transport.type === 'stdio') {
       // For stdio mode, ensure authentication before starting server
-      const hasValidNormalTokens = await this.tokenManager.validateTokens('normal');
-      if (!hasValidNormalTokens) {
-        // Switch to normal mode for authentication
-        this.tokenManager.setAccountMode('normal');
+      const hasValidTokens = await this.tokenManager.validateTokens(accountMode);
+      if (!hasValidTokens) {
+        // Ensure we're using the correct account mode (don't override it)
         const authSuccess = await this.authServer.start(true); // openBrowser = true
         if (!authSuccess) {
-          process.stderr.write('Authentication failed. Please check your OAuth credentials and try again.\n');
+          process.stderr.write(`Authentication failed for ${accountMode} account. Please check your OAuth credentials and try again.\n`);
           process.exit(1);
         }
-        process.stderr.write('Successfully authenticated normal user.\n');
+        process.stderr.write(`Successfully authenticated user.\n`);
       } else {
-        process.stderr.write('Valid normal user tokens found, skipping authentication prompt.\n');
+        process.stderr.write(`Valid ${accountMode} user tokens found, skipping authentication prompt.\n`);
       }
     } else {
-      // For HTTP mode, check for normal user tokens but don't block startup
-      const hasValidNormalTokens = await this.tokenManager.validateTokens('normal');
-      if (!hasValidNormalTokens) {
-        process.stderr.write('⚠️  No valid normal user authentication tokens found.\n');
+      // For HTTP mode, check for tokens but don't block startup
+      const hasValidTokens = await this.tokenManager.validateTokens(accountMode);
+      if (!hasValidTokens) {
+        process.stderr.write(`⚠️  No valid ${accountMode} user authentication tokens found.\n`);
         process.stderr.write('Visit the server URL in your browser to authenticate, or run "npm run auth" separately.\n');
       } else {
-        process.stderr.write('Valid normal user tokens found.\n');
+        process.stderr.write(`Valid ${accountMode} user tokens found.\n`);
       }
     }
   }
