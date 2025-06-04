@@ -2,9 +2,6 @@ import * as path from 'path';
 import * as os from 'os';
 import { fileURLToPath } from 'url';
 
-// Global variable to store CLI-provided credentials path
-let cliCredentialsPath: string | undefined;
-
 // Helper to get the project root directory reliably
 function getProjectRoot(): string {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,11 +9,6 @@ function getProjectRoot(): string {
   // Go up ONE level to get the project root
   const projectRoot = path.join(__dirname, ".."); // Corrected: Go up ONE level
   return path.resolve(projectRoot); // Ensure absolute path
-}
-
-// Set the credentials path from CLI arguments
-export function setCredentialsPath(credentialsPath: string): void {
-  cliCredentialsPath = credentialsPath;
 }
 
 // Returns the absolute path for the saved token file.
@@ -43,22 +35,16 @@ export function getLegacyTokenPath(): string {
 }
 
 // Returns the absolute path for the GCP OAuth keys file with priority:
-// 1. CLI parameter (highest priority)
-// 2. Environment variable GOOGLE_OAUTH_CREDENTIALS
-// 3. Default file path (lowest priority)
+// 1. Environment variable GOOGLE_OAUTH_CREDENTIALS (highest priority)
+// 2. Default file path (lowest priority)
 export function getKeysFilePath(): string {
-  // Priority 1: CLI parameter
-  if (cliCredentialsPath) {
-    return path.resolve(cliCredentialsPath);
-  }
-  
-  // Priority 2: Environment variable
+  // Priority 1: Environment variable
   const envCredentialsPath = process.env.GOOGLE_OAUTH_CREDENTIALS;
   if (envCredentialsPath) {
     return path.resolve(envCredentialsPath);
   }
   
-  // Priority 3: Default file path
+  // Priority 2: Default file path
   const projectRoot = getProjectRoot();
   const keysPath = path.join(projectRoot, "gcp-oauth.keys.json");
   return keysPath; // Already absolute from getProjectRoot
@@ -76,14 +62,11 @@ export function generateCredentialsErrorMessage(): string {
   return `
 OAuth credentials not found. Please provide credentials using one of these methods:
 
-1. CLI parameter:
-   npx @nspady/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
-
-2. Environment variable:
+1. Environment variable:
    Set GOOGLE_OAUTH_CREDENTIALS to the path of your credentials file:
    export GOOGLE_OAUTH_CREDENTIALS="/path/to/gcp-oauth.keys.json"
 
-3. Default file path:
+2. Default file path:
    Place your gcp-oauth.keys.json file in the package root directory.
 
 Token storage:

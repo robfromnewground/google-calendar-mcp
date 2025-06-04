@@ -15,7 +15,6 @@ import { AuthServer } from './auth/server.js';
 import { TokenManager } from './auth/tokenManager.js';
 import { getToolDefinitions } from './handlers/listTools.js';
 import { handleCallTool } from './handlers/callTool.js';
-import { setCredentialsPath } from './auth/utils.js';
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -153,7 +152,7 @@ function showHelp(): void {
 Google Calendar MCP Server v${VERSION}
 
 Usage:
-  npx @nspady/google-calendar-mcp [command] [options]
+  npx @nspady/google-calendar-mcp [command]
 
 Commands:
   auth     Run the authentication flow
@@ -161,13 +160,9 @@ Commands:
   version  Show version information
   help     Show this help message
 
-Options:
-  --credentials-file <path>    Path to OAuth credentials file
-
 Examples:
   npx @nspady/google-calendar-mcp auth
-  npx @nspady/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
-  npx @nspady/google-calendar-mcp start --credentials-file ./my-credentials.json
+  npx @nspady/google-calendar-mcp start
   npx @nspady/google-calendar-mcp version
   npx @nspady/google-calendar-mcp
 
@@ -184,11 +179,10 @@ function showVersion(): void {
 // Export server and main for testing or potential programmatic use
 export { main, server, runAuthServer };
 
-// Parse CLI arguments for credentials
-function parseCliArgs(): { command: string | undefined; credentialsPath: string | undefined } {
+// Parse CLI arguments
+function parseCliArgs(): { command: string | undefined } {
   const args = process.argv.slice(2);
   let command: string | undefined;
-  let credentialsPath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -204,29 +198,13 @@ function parseCliArgs(): { command: string | undefined; credentialsPath: string 
       command = arg;
       continue;
     }
-    
-    // Check for credentials file option
-    if (arg === '--credentials-file') {
-      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
-        credentialsPath = args[i + 1];
-        i++; // Skip the next argument as it's the value
-      } else {
-        console.error(`Option ${arg} requires a value`);
-        process.exit(1);
-      }
-    }
   }
 
-  return { command, credentialsPath };
+  return { command };
 }
 
 // CLI logic here (run always)
-const { command, credentialsPath } = parseCliArgs();
-
-// Set credentials path if provided via CLI
-if (credentialsPath) {
-  setCredentialsPath(credentialsPath);
-}
+const { command } = parseCliArgs();
 
 switch (command) {
   case "auth":
