@@ -44,7 +44,7 @@ export function getLegacyTokenPath(): string {
 
 // Returns the absolute path for the GCP OAuth keys file with priority:
 // 1. CLI parameter (highest priority)
-// 2. Environment variable GOOGLE_OAUTH_CREDENTIALS_FILE
+// 2. Environment variable GOOGLE_OAUTH_CREDENTIALS
 // 3. Default file path (lowest priority)
 export function getKeysFilePath(): string {
   // Priority 1: CLI parameter
@@ -53,7 +53,7 @@ export function getKeysFilePath(): string {
   }
   
   // Priority 2: Environment variable
-  const envCredentialsPath = process.env.GOOGLE_OAUTH_CREDENTIALS_FILE;
+  const envCredentialsPath = process.env.GOOGLE_OAUTH_CREDENTIALS;
   if (envCredentialsPath) {
     return path.resolve(envCredentialsPath);
   }
@@ -80,8 +80,8 @@ OAuth credentials not found. Please provide credentials using one of these metho
    npx @nspady/google-calendar-mcp auth --credentials-file /path/to/gcp-oauth.keys.json
 
 2. Environment variable:
-   Set GOOGLE_OAUTH_CREDENTIALS_FILE to the path of your credentials file:
-   export GOOGLE_OAUTH_CREDENTIALS_FILE="/path/to/gcp-oauth.keys.json"
+   Set GOOGLE_OAUTH_CREDENTIALS to the path of your credentials file:
+   export GOOGLE_OAUTH_CREDENTIALS="/path/to/gcp-oauth.keys.json"
 
 3. Default file path:
    Place your gcp-oauth.keys.json file in the package root directory.

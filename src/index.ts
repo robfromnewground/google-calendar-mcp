@@ -172,7 +172,7 @@ Examples:
   npx @nspady/google-calendar-mcp
 
 Environment Variables:
-  GOOGLE_OAUTH_CREDENTIALS_FILE    Path to OAuth credentials file
+  GOOGLE_OAUTH_CREDENTIALS    Path to OAuth credentials file
 `);
 }
 
