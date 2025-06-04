@@ -85,6 +85,7 @@ async function main() {
     process.on("SIGTERM", cleanup);
 
   } catch (error: unknown) {
+    process.stderr.write(`Server startup failed: ${error}\n`);
     process.exit(1);
   }
 }
@@ -236,7 +237,8 @@ switch (command) {
     break;
   case "start":
   case void 0:
-    main().catch(() => {
+    main().catch((error) => {
+      process.stderr.write(`Failed to start server: ${error}\n`);
       process.exit(1);
     });
     break;
