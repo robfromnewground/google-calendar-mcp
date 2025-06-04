@@ -319,10 +319,17 @@ npm run auth
 
 ### Token Management
 
-- Authentication tokens are stored in `.gcp-saved-tokens.json` in the project root.
-- This file is created automatically and should **not** be committed to version control (it's included in `.gitignore`).
-- The server attempts to automatically refresh expired access tokens using the stored refresh token.
-- If the refresh token itself expires (e.g., after 7 days if the Google Cloud app is in testing mode) or is revoked, you will need to re-authenticate using either the automatic flow (by restarting the server) or the manual `npm run auth` command.
+- **Authentication tokens are stored in `~/.config/google-calendar-mcp/tokens.json`** following the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) (a cross-platform standard for organizing user configuration files)
+- On systems without XDG support, tokens are stored in `~/.config/google-calendar-mcp/tokens.json` 
+- **Custom token location**: Set `GOOGLE_CALENDAR_MCP_TOKEN_PATH` environment variable to use a different location
+- Token files are created automatically with secure permissions (600) and should **not** be committed to version control
+- The server attempts to automatically refresh expired access tokens using the stored refresh token
+- If the refresh token itself expires (e.g., after 7 days if the Google Cloud app is in testing mode) or is revoked, you will need to re-authenticate using either the automatic flow (by restarting the server) or the manual `npm run auth` command
+
+#### Token Storage Priority
+1. **Custom path**: `GOOGLE_CALENDAR_MCP_TOKEN_PATH` environment variable (highest priority)
+2. **XDG Config**: `$XDG_CONFIG_HOME/google-calendar-mcp/tokens.json` if XDG_CONFIG_HOME is set
+3. **Default**: `~/.config/google-calendar-mcp/tokens.json` (lowest priority)
 
 ## Testing
 

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as os from 'os';
 import { fileURLToPath } from 'url';
 
 // Global variable to store CLI-provided credentials path
@@ -19,10 +20,26 @@ export function setCredentialsPath(credentialsPath: string): void {
 }
 
 // Returns the absolute path for the saved token file.
+// Uses XDG Base Directory spec with fallback to home directory and legacy project root
 export function getSecureTokenPath(): string {
+  // Check for custom token path environment variable first
+  const customTokenPath = process.env.GOOGLE_CALENDAR_MCP_TOKEN_PATH;
+  if (customTokenPath) {
+    return path.resolve(customTokenPath);
+  }
+
+  // Use XDG Base Directory spec or fallback to ~/.config
+  const configHome = process.env.XDG_CONFIG_HOME || 
+    path.join(os.homedir(), '.config');
+  
+  const tokenDir = path.join(configHome, 'google-calendar-mcp');
+  return path.join(tokenDir, 'tokens.json');
+}
+
+// Returns the legacy token path for backward compatibility
+export function getLegacyTokenPath(): string {
   const projectRoot = getProjectRoot();
-  const tokenPath = path.join(projectRoot, ".gcp-saved-tokens.json");
-  return tokenPath; // Already absolute from getProjectRoot
+  return path.join(projectRoot, ".gcp-saved-tokens.json");
 }
 
 // Returns the absolute path for the GCP OAuth keys file with priority:
@@ -68,6 +85,10 @@ OAuth credentials not found. Please provide credentials using one of these metho
 
 3. Default file path:
    Place your gcp-oauth.keys.json file in the package root directory.
+
+Token storage:
+- Tokens are saved to: ${getSecureTokenPath()}
+- To use a custom token location, set GOOGLE_CALENDAR_MCP_TOKEN_PATH environment variable
 
 To get OAuth credentials:
 1. Go to the Google Cloud Console (https://console.cloud.google.com/)
