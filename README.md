@@ -86,26 +86,11 @@ Along with the normal capabilities you would expect for a calendar integration y
 
 ### Option 1: Use with npx (Recommended)
 
-**Important**: When using npx, you **must** specify the credentials file path using either the `--credentials-file` parameter or the `GOOGLE_OAUTH_CREDENTIALS` environment variable.
-
 1. **Add to Claude Desktop**: Edit your Claude Desktop configuration file:
    
    **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-   **Method A: Using --credentials-file parameter (Recommended)**:
-   ```json
-   {
-     "mcpServers": {
-       "google-calendar": {
-         "command": "npx",
-         "args": ["@cocal/google-calendar-mcp"]
-       }
-     }
-   }
-   ```
-
-   **Method B: Using environment variable**:
    ```json
    {
      "mcpServers": {
@@ -132,15 +117,14 @@ Along with the normal capabilities you would expect for a calendar integration y
    npm install && npm run build
    ```
 3. **Configure OAuth credentials** using one of these methods:
+   **Option A: Custom file location (recommended)**
+   - Place your credentials file anywhere on your system
+   - Use the `GOOGLE_OAUTH_CREDENTIALS` environment variable to specify the path
 
-   **Option A: Default file location (Legacy)**
+   **Option B: In project file location (legacy)**
    - Download your Google OAuth credentials from the Google Cloud Console (under "Credentials") and rename the file to `gcp-oauth.keys.json` and place it in the root directory of the project.
    - Ensure the file contains credentials for a "Desktop app".
    - Alternatively, copy the provided template file: `cp gcp-oauth.keys.example.json gcp-oauth.keys.json` and populate it with your credentials from the Google Cloud Console.
-
-   **Option B: Custom file location**
-   - Place your credentials file anywhere on your system
-   - Use the `--credentials-file` parameter or `GOOGLE_OAUTH_CREDENTIALS` environment variable to specify the path
 
 4. **Add configuration to your Claude Desktop config file:**
 
@@ -151,22 +135,6 @@ Along with the normal capabilities you would expect for a calendar integration y
        "google-calendar": {
          "command": "node",
          "args": ["<absolute-path-to-project-folder>/build/index.js"]
-       }
-     }
-   }
-   ```
-
-   **Using custom credentials file path:**
-   ```json
-   {
-     "mcpServers": {
-       "google-calendar": {
-         "command": "node",
-         "args": [
-           "<absolute-path-to-project-folder>/build/index.js",
-           "--credentials-file",
-           "/path/to/your/credentials.json"
-         ]
        }
      }
    }
@@ -250,6 +218,17 @@ For detailed setup and usage instructions, see [docs/multi-account-setup.md](doc
 ## Command Line Options
 
 The server supports various command-line options for configuration:
+### Credential Loading Priority
+
+The server searches for OAuth credentials in the following order:
+
+1. **Environment Variable** (Highest Priority): `GOOGLE_OAUTH_CREDENTIALS` environment variable
+2. **Default File** (Lowest Priority): `gcp-oauth.keys.json` in the current working directory
+
+### Configuration Methods
+
+#### Method 1: Environment Variable (Recommended)
+Set the `GOOGLE_OAUTH_CREDENTIALS` environment variable:
 
 ```bash
 # Basic usage
@@ -269,6 +248,33 @@ node build/index.js                                    # stdio (local use)
 node build/index.js --transport http --port 3000       # HTTP server
 node build/index.js --transport http --auth-mode remote # Remote auth
 ```
+# Then run normally
+npx @cocal/google-calendar-mcp start
+```
+
+#### Method 2: Default File
+Place your OAuth credentials file as `gcp-oauth.keys.json` in the current working directory (traditional method).
+
+### Claude Desktop Configuration Examples
+
+Choose one of these configuration methods based on your preference:
+
+```json
+{
+  "mcpServers": {
+    "google-calendar": {
+      "command": "npx",
+      "args": ["@cocal/google-calendar-mcp"],
+      "env": {
+        "GOOGLE_OAUTH_CREDENTIALS": "/Users/yourname/Documents/my-google-credentials.json"
+      }
+    }
+  }
+}
+```
+
+**⚠️ Important Note for npx Users**: When using npx, you **must** specify the credentials file path using the `GOOGLE_OAUTH_CREDENTIALS` environment variable. The default file location method is not reliable with npx installations due to package caching behavior.
+
 ## Authentication
 
 The server handles Google OAuth 2.0 authentication to access your calendar data.
@@ -276,7 +282,6 @@ The server handles Google OAuth 2.0 authentication to access your calendar data.
 ### Automatic Authentication Flow (During Server Start)
 
 1. **Ensure OAuth credentials are available** using one of the supported methods:
-   - CLI parameter: `--credentials-file /path/to/credentials.json`
    - Environment variable: `GOOGLE_OAUTH_CREDENTIALS=/path/to/credentials.json`
    - Default file: `gcp-oauth.keys.json` in the working directory
 
@@ -300,13 +305,7 @@ If you need to re-authenticate or prefer to handle authentication separately:
 
 **For npx installations:**
 ```bash
-# Using default credentials file location
-npx @cocal/google-calendar-mcp auth
-
-# Using custom credentials file path
-npx @cocal/google-calendar-mcp auth --credentials-file /path/to/your/credentials.json
-
-# Using environment variable
+# Set environment variable and authenticate
 export GOOGLE_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
 npx @cocal/google-calendar-mcp auth
 ```
@@ -513,33 +512,12 @@ When running in HTTP mode, the server exposes these endpoints:
 
    **⚠️ For npx users**: You **must** specify the credentials file path - the default file location method is not reliable with npx. Use one of these options:
 
-   **Option A: Use CLI Parameter (Recommended for npx)**
-   ```bash
-   # For authentication
-   npx @cocal/google-calendar-mcp auth --credentials-file /path/to/your/credentials.json
-   
-   # Update Claude Desktop config to use CLI parameter:
+   ```json
    {
      "mcpServers": {
        "google-calendar": {
          "command": "npx",
-         "args": ["@cocal/google-calendar-mcp", "start", "--credentials-file", "/path/to/your/credentials.json"]
-       }
-     }
-   }
-   ```
-
-   **Option B: Use Environment Variable**
-   ```bash
-   # Set environment variable
-   export GOOGLE_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
-   
-   # Update Claude Desktop config to use environment variable:
-   {
-     "mcpServers": {
-       "google-calendar": {
-         "command": "npx",
-         "args": ["@cocal/google-calendar-mcp", "start"],
+         "args": ["@cocal/google-calendar-mcp"],
          "env": {
            "GOOGLE_OAUTH_CREDENTIALS": "/path/to/your/credentials.json"
          }
@@ -557,8 +535,7 @@ When running in HTTP mode, the server exposes these endpoints:
    - Check that no other process is blocking ports 3000-3004 when authentication is required.
 
 3. **Credential Loading Priority Issues:**
-   - Remember the loading priority: CLI parameter > Environment variable > Default file
-   - Use `--credentials-file` parameter to override environment variables
+   - Remember the loading priority: Environment variable > Default file
    - Check that environment variables are properly set in your shell or Claude Desktop config
    - Verify file paths are absolute and accessible
 
