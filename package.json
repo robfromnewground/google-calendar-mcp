@@ -4,14 +4,42 @@
   "description": "Google Calendar MCP Server with extensive support for calendar management",
   "type": "module",
   "bin": {
-    "google-calendar-mcp": "./build/index.js"
+    "google-calendar-mcp": "build/index.js"
   },
+  "files": [
+    "build/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "google-calendar",
+    "calendar",
+    "ai",
+    "llm",
+    "integration"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nspady/google-calendar-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nspady/google-calendar-mcp/issues"
+  },
+  "homepage": "https://github.com/nspady/google-calendar-mcp#readme",
+  "author": "nspady",
+  "license": "MIT",
   "scripts": {
     "start": "node build/index.js",
     "build": "node scripts/build.js",
     "auth": "node build/auth-server.js",
     "dev": "node scripts/dev.js",
-    "postinstall": "npm run build"
+    "postinstall": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -29,13 +57,5 @@
     "openai": "^4.104.0",
     "typescript": "^5.3.3",
     "vitest": "^3.1.1"
-  },
-  "files": [
-    "build/",
-    "scripts/build.js",
-    "scripts/dev.js",
-    "README.md",
-    "LICENSE",
-    "gcp-oauth.keys.example.json"
-  ]
+  }
 }
