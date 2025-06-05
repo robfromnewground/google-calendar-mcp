@@ -82,8 +82,33 @@ describe('Google Calendar MCP Server', () => {
       (mockCalendarApi.calendarList.list as any).mockResolvedValue({
         data: {
           items: [
-            { id: 'cal1', summary: 'Work Calendar' },
-            { id: 'cal2', summary: 'Personal' },
+            { 
+              id: 'cal1', 
+              summary: 'Work Calendar',
+              timeZone: 'America/New_York',
+              kind: 'calendar#calendarListEntry',
+              accessRole: 'owner',
+              primary: true,
+              selected: true,
+              hidden: false,
+              backgroundColor: '#0D7377',
+              defaultReminders: [
+                { method: 'popup', minutes: 15 },
+                { method: 'email', minutes: 60 }
+              ],
+              description: 'Work-related events and meetings'
+            },
+            { 
+              id: 'cal2', 
+              summary: 'Personal',
+              timeZone: 'America/Los_Angeles',
+              kind: 'calendar#calendarListEntry',
+              accessRole: 'reader',
+              primary: false,
+              selected: true,
+              hidden: false,
+              backgroundColor: '#D50000'
+            },
           ]
         }
       });
@@ -95,7 +120,24 @@ describe('Google Calendar MCP Server', () => {
         content: [
           {
             type: 'text',
-            text: 'Work Calendar (cal1)\nPersonal (cal2)',
+            text: `Work Calendar (PRIMARY) (cal1)
+  Timezone: America/New_York
+  Kind: calendar#calendarListEntry
+  Access Role: owner
+  Selected: Yes
+  Hidden: No
+  Background Color: #0D7377
+  Default Reminders: popup (15min before), email (60min before)
+  Description: Work-related events and meetings
+
+Personal (cal2)
+  Timezone: America/Los_Angeles
+  Kind: calendar#calendarListEntry
+  Access Role: reader
+  Selected: Yes
+  Hidden: No
+  Background Color: #D50000
+  Default Reminders: None`,
           },
         ],
       });
