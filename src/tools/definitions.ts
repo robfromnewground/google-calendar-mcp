@@ -51,46 +51,60 @@ export function registerAllTools(
     }
   );
 
-  // List Events - Read-only tool
+  // List Events - Read-only tool with custom schema to avoid oneOf/anyOf
   server.tool(
-    "list-events",
+    "list-events", 
     "List events from one or more calendars",
     {
-      calendarId: z.union([
-        CalendarIdSchema,
-        z.array(CalendarIdSchema).min(1).max(50)
-      ]).transform((value) => {
-        // Handle case where calendarId is passed as a JSON string
-        if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
-          try {
-            const parsed = JSON.parse(value);
-            if (Array.isArray(parsed) && parsed.every(id => typeof id === 'string' && id.length > 0)) {
-              // Validate the parsed array meets our constraints
-              if (parsed.length === 0) {
-                throw new Error("At least one calendar ID is required");
-              }
-              if (parsed.length > 50) {
-                throw new Error("Maximum 50 calendars allowed per request");
-              }
-              if (new Set(parsed).size !== parsed.length) {
-                throw new Error("Duplicate calendar IDs are not allowed");
-              }
-              return parsed;
-            } else {
-              throw new Error('JSON string must contain an array of non-empty strings');
-            }
-          } catch (error) {
-            throw new Error(`Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
-          }
-        }
-        return value;
-      }).describe("ID of the calendar(s) to list events from"),
+      calendarId: z.string().describe("ID of the calendar(s) to list events from. Accepts either a single calendar ID string or an array of calendar IDs (passed as JSON string like '[\"cal1\", \"cal2\"]')"),
       timeMin: TimeMinSchema,
       timeMax: TimeMaxSchema
     },
     async ({ calendarId, timeMin, timeMax }: { calendarId: string | string[], timeMin: string, timeMax: string }) => {
+      // Validate and preprocess calendarId input
+      let processedCalendarId = calendarId;
+      
+      // Handle case where calendarId is passed as a JSON string
+      if (typeof calendarId === 'string' && calendarId.trim().startsWith('[') && calendarId.trim().endsWith(']')) {
+        try {
+          const parsed = JSON.parse(calendarId);
+          if (Array.isArray(parsed) && parsed.every(id => typeof id === 'string' && id.length > 0)) {
+            if (parsed.length === 0) {
+              throw new Error("At least one calendar ID is required");
+            }
+            if (parsed.length > 50) {
+              throw new Error("Maximum 50 calendars allowed per request");
+            }
+            if (new Set(parsed).size !== parsed.length) {
+              throw new Error("Duplicate calendar IDs are not allowed");
+            }
+            processedCalendarId = parsed;
+          } else {
+            throw new Error('JSON string must contain an array of non-empty strings');
+          }
+        } catch (error) {
+          throw new Error(`Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
+        }
+      }
+      
+      // Additional validation for arrays
+      if (Array.isArray(processedCalendarId)) {
+        if (processedCalendarId.length === 0) {
+          throw new Error("At least one calendar ID is required");
+        }
+        if (processedCalendarId.length > 50) {
+          throw new Error("Maximum 50 calendars allowed per request");
+        }
+        if (!processedCalendarId.every(id => typeof id === 'string' && id.length > 0)) {
+          throw new Error("All calendar IDs must be non-empty strings");
+        }
+        if (new Set(processedCalendarId).size !== processedCalendarId.length) {
+          throw new Error("Duplicate calendar IDs are not allowed");
+        }
+      }
+      
       const handler = new ListEventsHandler();
-      return executeWithHandler(handler, { calendarId, timeMin, timeMax });
+      return executeWithHandler(handler, { calendarId: processedCalendarId, timeMin, timeMax });
     }
   );
 
@@ -169,7 +183,7 @@ export function registerAllTools(
       summary: z.string().optional().describe("Updated title of the event"),
       description: z.string().optional().describe("Updated description/notes"),
       start: RFC3339DateTimeSchema.optional().describe("Updated start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."),
-      end: RFC3339DateTimeSchema.optional().describe("Updated end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
+      end: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Updated end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
       timeZone: z.string().describe("Updated timezone"),
       location: z.string().optional().describe("Updated location"),
       attendees: z.array(AttendeeSchema).optional().describe("Updated attendee list"),
@@ -178,8 +192,8 @@ export function registerAllTools(
       recurrence: z.array(z.string()).optional().describe("Updated recurrence rules"),
       sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe("Whether to send update notifications"),
       modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe("Scope for recurring event modifications"),
-      originalStartTime: RFC3339DateTimeSchema.optional().describe("Original start time of recurring event instance - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisEventOnly' scope."),
-      futureStartDate: RFC3339DateTimeSchema.optional().describe("Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope.")
+      originalStartTime: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Original start time of recurring event instance - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisEventOnly' scope."),
+      futureStartDate: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope.")
     },
     async (args: {
       calendarId: string;

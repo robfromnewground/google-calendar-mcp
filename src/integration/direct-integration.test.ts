@@ -260,7 +260,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
           const result = await client.callTool({
             name: 'list-events',
             arguments: {
-              calendarId: ['primary', TEST_CALENDAR_ID],
+              calendarId: JSON.stringify(['primary', TEST_CALENDAR_ID]),
               timeMin: timeRanges.nextWeek.timeMin,
               timeMax: timeRanges.nextWeek.timeMax
             }

@@ -26,41 +26,7 @@ export const TimeMinSchema = RFC3339DateTimeSchema.describe("Start time boundary
 export const TimeMaxSchema = RFC3339DateTimeSchema.describe("End time boundary - CRITICAL: Must include timezone. Valid formats: '2024-01-01T23:59:59Z' (UTC) or '2024-01-01T23:59:59-08:00' (Pacific). NEVER omit timezone.");
 
 export const ListEventsArgumentsSchema = z.object({
-  calendarId: z.union([
-    z.string().min(1, "Calendar ID cannot be empty"),
-    z.array(z.string().min(1, "Calendar ID cannot be empty"))
-      .min(1, "At least one calendar ID is required")
-      .max(50, "Maximum 50 calendars allowed per request")
-      .refine(
-        (ids) => new Set(ids).size === ids.length,
-        "Duplicate calendar IDs are not allowed"
-      )
-  ]).transform((value) => {
-    // Handle case where calendarId is passed as a JSON string
-    if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
-      try {
-        const parsed = JSON.parse(value);
-        if (Array.isArray(parsed) && parsed.every(id => typeof id === 'string' && id.length > 0)) {
-          // Validate the parsed array meets our constraints
-          if (parsed.length === 0) {
-            throw new Error("At least one calendar ID is required");
-          }
-          if (parsed.length > 50) {
-            throw new Error("Maximum 50 calendars allowed per request");
-          }
-          if (new Set(parsed).size !== parsed.length) {
-            throw new Error("Duplicate calendar IDs are not allowed");
-          }
-          return parsed;
-        } else {
-          throw new Error('JSON string must contain an array of non-empty strings');
-        }
-      } catch (error) {
-        throw new Error(`Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
-      }
-    }
-    return value;
-  }).describe("Calendar ID(s) to fetch events from"),
+  calendarId: z.string().describe("Calendar ID(s) to fetch events from. Accepts either a single calendar ID string or an array of calendar IDs (passed as JSON string like '[\"cal1\", \"cal2\"]')"),
   timeMin: RFC3339DateTimeSchema
     .optional()
     .describe("Start time for event filtering"),

@@ -92,6 +92,19 @@ const commands = {
     description: 'Generate test coverage report',
     cmd: 'npx',
     args: ['vitest', 'run', '--coverage']
+  },
+
+  // Schema Validation
+  'validate-schemas': {
+    description: 'Validate MCP tool schemas for compatibility',
+    cmd: 'node',
+    args: ['scripts/validate-schemas.js'],
+    preBuild: true  // Custom flag to indicate build is needed
+  },
+  'test:schemas': {
+    description: 'Run schema validation tests',
+    cmd: 'npm',
+    args: ['run', 'dev', 'validate-schemas']
   }
 };
 
@@ -105,7 +118,8 @@ function showHelp() {
     'Authentication': ['auth', 'auth:test', 'account:status', 'account:clear:normal', 'account:clear:test'],
     'Unit Testing': ['test'],
     'Integration Testing': ['test:integration', 'test:integration:claude', 'test:integration:openai', 'test:integration:all', 'test:watch:all'],
-    'Coverage & Analysis': ['coverage']
+    'Coverage & Analysis': ['coverage'],
+    'Schema Validation': ['validate-schemas', 'test:schemas']
   };
 
   for (const [category, cmdList] of Object.entries(categories)) {
@@ -124,12 +138,37 @@ function showHelp() {
   console.log('  npm run dev account:status        # Check auth status');
 }
 
-function runCommand(commandName) {
+async function runCommand(commandName) {
   const command = commands[commandName];
   if (!command) {
     console.error(`❌ Unknown command: ${commandName}`);
     console.log('\nRun "npm run dev" to see available commands.');
     process.exit(1);
+  }
+
+  // Handle preBuild flag
+  if (command.preBuild) {
+    console.log(`📦 Building project first...`);
+    await new Promise((resolve, reject) => {
+      const buildChild = spawn('npm', ['run', 'build'], {
+        stdio: 'inherit',
+        cwd: rootDir
+      });
+      
+      buildChild.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Build failed with exit code ${code}`));
+        } else {
+          resolve();
+        }
+      });
+      
+      buildChild.on('error', reject);
+    }).catch(error => {
+      console.error(`\n❌ Build failed: ${error.message}`);
+      process.exit(1);
+    });
+    console.log(`✅ Build complete\n`);
   }
 
   console.log(`🚀 Running: ${commandName}`);

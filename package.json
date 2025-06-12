@@ -38,8 +38,7 @@
     "dev": "node scripts/dev.js",
     "postinstall": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

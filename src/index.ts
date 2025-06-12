@@ -56,13 +56,13 @@ async function runAuthServer(): Promise<void> {
       process.exit(1);
     } else if (authServerInstance.authCompletedSuccessfully) {
       // Auth was successful (either existing tokens were valid or flow completed just now)
-      console.log("Authentication successful.");
+      process.stderr.write("Authentication successful.\n");
       process.exit(0); // Exit cleanly if auth is already done
     }
 
     // If we reach here, the server started and is waiting for the browser callback
-    console.log(
-      "Authentication server started. Please complete the authentication in your browser..."
+    process.stderr.write(
+      "Authentication server started. Please complete the authentication in your browser...\n"
     );
 
     // Wait for completion
@@ -70,7 +70,7 @@ async function runAuthServer(): Promise<void> {
       if (authServerInstance.authCompletedSuccessfully) {
         clearInterval(intervalId);
         await authServerInstance.stop();
-        console.log("Authentication completed successfully!");
+        process.stderr.write("Authentication completed successfully!\n");
         process.exit(0);
       }
     }, 1000);
@@ -81,7 +81,7 @@ async function runAuthServer(): Promise<void> {
 }
 
 function showHelp(): void {
-  console.log(`
+  process.stdout.write(`
 Google Calendar MCP Server v${VERSION}
 
 Usage:
@@ -105,7 +105,7 @@ Environment Variables:
 }
 
 function showVersion(): void {
-  console.log(`Google Calendar MCP Server v${VERSION}`);
+  process.stdout.write(`Google Calendar MCP Server v${VERSION}\n`);
 }
 
 // --- Exports & Execution Guard --- 

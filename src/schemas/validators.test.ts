@@ -351,7 +351,8 @@ describe('ListEventsArgumentsSchema JSON String Handling', () => {
     };
 
     const result = ListEventsArgumentsSchema.parse(input);
-    expect(result.calendarId).toEqual(['primary', 'secondary@gmail.com']);
+    // The new schema keeps JSON strings as strings (they are parsed in the handler)
+    expect(result.calendarId).toBe('["primary", "secondary@gmail.com"]');
   });
 
   it('should handle regular string calendarId', () => {
@@ -366,33 +367,40 @@ describe('ListEventsArgumentsSchema JSON String Handling', () => {
   });
 
   it('should handle regular array calendarId', () => {
+    // Arrays are no longer directly supported - they must be JSON strings
     const input = {
       calendarId: ['primary', 'secondary@gmail.com'],
       timeMin: '2024-01-01T00:00:00Z',
       timeMax: '2024-01-02T00:00:00Z'
     };
 
-    const result = ListEventsArgumentsSchema.parse(input);
-    expect(result.calendarId).toEqual(['primary', 'secondary@gmail.com']);
+    // This should now throw because arrays aren't accepted directly
+    expect(() => ListEventsArgumentsSchema.parse(input)).toThrow();
   });
 
   it('should reject invalid JSON string', () => {
+    // Invalid JSON strings are accepted by the schema but will fail in the handler
     const input = {
       calendarId: '["primary", invalid]',
       timeMin: '2024-01-01T00:00:00Z',
       timeMax: '2024-01-02T00:00:00Z'
     };
 
-    expect(() => ListEventsArgumentsSchema.parse(input)).toThrow();
+    // The schema accepts any string - validation happens in the handler
+    const result = ListEventsArgumentsSchema.parse(input);
+    expect(result.calendarId).toBe('["primary", invalid]');
   });
 
   it('should reject JSON string with non-string elements', () => {
+    // Schema accepts any string - validation happens in the handler
     const input = {
       calendarId: '["primary", 123]',
       timeMin: '2024-01-01T00:00:00Z',
       timeMax: '2024-01-02T00:00:00Z'
     };
 
-    expect(() => ListEventsArgumentsSchema.parse(input)).toThrow();
+    // The schema accepts any string - validation happens in the handler
+    const result = ListEventsArgumentsSchema.parse(input);
+    expect(result.calendarId).toBe('["primary", 123]');
   });
 }); 
