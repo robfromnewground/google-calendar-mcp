@@ -1,126 +1,248 @@
 # Architecture Overview
 
+This document describes the architectural design of the Google Calendar MCP Server.
 
-## BaseToolHandler
+## Core Architecture
 
-The `BaseToolHandler` class provides a foundation for all tool handlers in this project. It encapsulates common functionality such as:
+### Transport Layer
 
-- **Error Handling:**  A centralized `handleGoogleApiError` method to gracefully handle errors returned by the Google Calendar API, specifically addressing authentication issues.
-- **Authentication:** Receives an OAuth2Client instance for authenticated API calls.
-- **Abstraction:**  Defines the `runTool` abstract method that all handlers must implement to execute their specific logic.
+The server supports two transport modes:
 
-By extending `BaseToolHandler`, each tool handler benefits from consistent error handling and a standardized structure, promoting code reusability and maintainability.  This approach ensures that all handlers adhere to a common pattern for interacting with the Google Calendar API and managing authentication.
+1. **stdio Transport** (Default)
+   - Direct process communication
+   - Used by Claude Desktop
+   - Synchronous authentication flow
+   - Single-user mode
 
-## BatchRequestHandler
+2. **HTTP Transport**
+   - RESTful API with Server-Sent Events (SSE)
+   - Remote deployment capable
+   - Session-based multi-user support
+   - Async authentication flow
 
-The `BatchRequestHandler` class provides efficient multi-calendar support through Google's batch API:
+### Authentication System
 
-- **Batch Processing:** Combines multiple API requests into a single HTTP request for improved performance
-- **Multipart Handling:** Creates and parses multipart/mixed request and response bodies 
-- **Error Resilience:** Implements retry logic with exponential backoff for rate limiting and network errors
-- **Response Processing:** Handles mixed success/failure responses from batch requests
-- **Validation:** Enforces Google's 50-request batch limit and proper request formatting
+```
+src/auth/
+├── client.ts       # OAuth2Client initialization
+├── server.ts       # OAuth flow server
+├── tokenManager.ts # Token storage and refresh
+└── utils.ts        # Auth utilities
+```
 
-This approach significantly reduces API calls when querying multiple calendars, improving both performance and reliability.
+**Key Features:**
+- OAuth 2.0 with refresh token support
+- Multi-account management (normal/test)
+- Secure token storage using system directories
+- Automatic token refresh
+- Test mode with mock credentials
 
-## RecurringEventHelpers
+### Handler Architecture
 
-The `RecurringEventHelpers` class provides specialized functionality for managing recurring calendar events:
+```
+src/handlers/
+├── core/
+│   ├── BaseToolHandler.ts      # Abstract base class
+│   ├── ListEventsHandler.ts    # Event listing
+│   ├── CreateEventHandler.ts   # Event creation
+│   ├── UpdateEventHandler.ts   # Event updates
+│   └── ...                     # Other handlers
+└── utils.ts                    # Shared utilities
+```
 
-- **Event Type Detection:** Identifies whether an event is recurring or single-occurrence
-- **Instance ID Formatting:** Generates proper Google Calendar instance IDs for single occurrence modifications
-- **Series Splitting:** Implements the complex logic for splitting recurring series with UNTIL clauses
-- **Duration Preservation:** Maintains event duration across timezone changes and modifications
-- **RRULE Processing:** Handles recurrence rule updates while preserving EXDATE and RDATE patterns
+**Handler Pattern:**
+1. Each MCP tool has a dedicated handler
+2. Handlers extend common base functionality
+3. Input validation using schemas
+4. Consistent error handling
+5. Response formatting
 
-The `UpdateEventHandler` has been enhanced to support three modification scopes:
-- **Single Instance:** Modifies one occurrence using instance IDs
-- **All Instances:** Updates the master event (default behavior for backward compatibility)  
-- **Future Instances:** Splits the series and creates a new recurring event from a specified date forward
+### Schema System
 
-This architecture maintains full backward compatibility while providing advanced recurring event management capabilities.
+```
+src/schemas/
+├── types.ts        # TypeScript type definitions
+└── validators.ts   # Runtime validation schemas
+```
 
-### How ListEventsHandler Uses BaseToolHandler
+**Validation Flow:**
+1. MCP receives tool request
+2. Schema validates input parameters
+3. Handler processes validated data
+4. Response formatted to MCP spec
 
-The `ListEventsHandler` extends the `BaseToolHandler` to inherit its common functionalities and implements multi-calendar support:
+## Key Components
 
+### Server Class (`src/server.ts`)
+
+The main orchestrator that:
+- Initializes transport layer
+- Manages authentication
+- Registers tool handlers
+- Handles graceful shutdown
+
+### Tool Registration (`src/tools/definitions.ts`)
+
+Centralized tool registry that maps:
+- Tool names to handlers
+- Input schemas to tools
+- Descriptions for MCP discovery
+
+### Batch Operations
+
+The `BatchListEvents` handler implements efficient multi-calendar queries:
+- Parallel calendar fetching
+- Result aggregation
+- Unified response formatting
+
+### Recurring Event Support
+
+Advanced recurring event handling in `UpdateEventHandler`:
+- **Single Instance**: Modify one occurrence
+- **Future Events**: Split series at date
+- **All Events**: Update entire series
+
+## Data Flow
+
+### Request Flow
+
+```
+Client Request
+    ↓
+Transport Layer (stdio/HTTP)
+    ↓
+MCP Protocol Handler
+    ↓
+Schema Validation
+    ↓
+Tool Handler
+    ↓
+Google Calendar API
+    ↓
+Response Formatting
+    ↓
+Client Response
+```
+
+### Authentication Flow
+
+```
+First Run
+    ↓
+Check Stored Tokens
+    ↓ (if invalid)
+Launch Auth Server
+    ↓
+Open Browser
+    ↓
+Google OAuth Consent
+    ↓
+Receive Authorization Code
+    ↓
+Exchange for Tokens
+    ↓
+Store Tokens Securely
+    ↓
+Ready for API Calls
+```
+
+## Security Architecture
+
+### Token Security
+- Tokens stored in user config directory
+- File permissions set to 600 (user-only)
+- Never logged or exposed
+- Automatic cleanup on errors
+
+### HTTP Security
+- Session-based authentication
+- CORS protection
+- Rate limiting (100 req/15min)
+- Origin validation
+- HTTPS enforcement in production
+
+### Input Validation
+- All inputs validated before processing
+- Schema-based type checking
+- SQL injection prevention
+- XSS protection in responses
+
+## Performance Considerations
+
+### Caching Strategy
+- Calendar list cached (5 min)
+- Color definitions cached (session)
+- No event caching (real-time data)
+
+### Rate Limiting
+- Respect Google Calendar quotas
+- Exponential backoff on 429s
+- Request batching where possible
+
+### Resource Management
+- Connection pooling for HTTP
+- Graceful shutdown handling
+- Memory-efficient streaming
+
+## Extension Points
+
+### Adding New Tools
+
+1. Create handler in `src/handlers/core/`
+2. Define schema in `src/schemas/`
+3. Register in `src/tools/definitions.ts`
+4. Add tests
+5. Update documentation
+
+### Custom Transports
+
+Implement the transport interface:
 ```typescript
-export class ListEventsHandler extends BaseToolHandler {
-    async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
-        const validArgs = ListEventsArgumentsSchema.parse(args);
-        
-        // Normalize calendarId to always be an array for consistent processing
-        const calendarIds = Array.isArray(validArgs.calendarId) 
-            ? validArgs.calendarId 
-            : [validArgs.calendarId];
-        
-        const allEvents = await this.fetchEvents(oauth2Client, calendarIds, {
-            timeMin: validArgs.timeMin,
-            timeMax: validArgs.timeMax
-        });
-        
-        return {
-            content: [{
-                type: "text",
-                text: this.formatEventList(allEvents, calendarIds),
-            }],
-        };
-    }
-
-    // Additional helper methods for single vs batch processing...
+interface Transport {
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  onMessage(handler: MessageHandler): void;
+  sendMessage(message: any): void;
 }
 ```
 
-The handler automatically chooses between single API calls and batch processing based on the number of calendars requested, providing optimal performance for both scenarios.
+### Authentication Providers
 
-### Registration with handlerMap
+The auth system can be extended for:
+- Service account support
+- Alternative OAuth providers
+- API key authentication
 
-Finally, add the tool name (as defined in `ToolDefinitions`) and a new instance of the corresponding handler (e.g., `ListEventsHandler`) to the `handlerMap` in `callTool.ts`. This map enables the tool invocation system to automatically route incoming tool calls to the correct handler implementation.
+## Testing Architecture
 
-```typescript
-const handlerMap: Record<string, BaseToolHandler> = {
-    "list-calendars": new ListCalendarsHandler(),
-    "list-events": new ListEventsHandler(),
-    "search-events": new SearchEventsHandler(),
-    "list-colors": new ListColorsHandler(),
-    "create-event": new CreateEventHandler(),
-    "update-event": new UpdateEventHandler(),
-    "delete-event": new DeleteEventHandler(),
-};
-```
+### Unit Tests
+- Handler logic isolation
+- Schema validation tests
+- Utility function tests
+- Mock Google API responses
 
-### Validation Architecture
+### Integration Tests
+- Real Google Calendar API
+- End-to-end tool testing
+- Multi-account scenarios
+- Error condition handling
 
-### Unified Time Schema Validation
+### Schema Tests
+- MCP compliance validation
+- OpenAI compatibility checks
+- Breaking change detection
 
-The validation system provides consistent datetime handling across all tools:
+## Deployment Architecture
 
-- **RFC3339DateTimeSchema**: Base schema requiring timezone-aware datetime strings
-- **TimeMinSchema/TimeMaxSchema**: Standardized time boundary schemas with consistent descriptions
-- **Centralized Validation**: All time parameters use shared schemas from `validators.ts`
+### Local Deployment
+- Single-user mode
+- Direct file system access
+- Synchronous operations
 
-### Tool-Specific Validation Requirements
+### Cloud Deployment
+- Multi-user sessions
+- Environment-based config
+- Health monitoring
+- Horizontal scaling ready
 
-Different tools have varying time parameter requirements based on their function:
-
-- **list-events**: `timeMin` and `timeMax` required for precise event filtering
-- **search-events**: `timeMin` and `timeMax` required to limit search scope 
-- **get-freebusy**: `timeMin` and `timeMax` required for availability queries
-- **create-event**: `start` and `end` required for new events
-- **update-event**: `start` and `end` optional for partial updates
-
-This approach ensures consistent API behavior while maintaining backwards compatibility.
-
-## Code Quality Tests
-
-The test suite includes specialized tests to maintain code quality and MCP compliance:
-
-- **Console Statement Detection**: Automatically scans source code for `console.log`, `console.error`, and other console methods that are not supported in MCP clients. This ensures the server follows MCP best practices by using `process.stderr.write()` for error logging instead.
-- **Tool Handler Tests**: Verify that all calendar operations work correctly with mocked Google APIs
-- **Batch Request Tests**: Test the batch processing capabilities for handling multiple calendar operations
-- **Schema Validation Tests**: Ensure all input validation works correctly, including time format requirements
-
-Run the console statement detection test specifically:
-```bash
-npm test -- console-statements.test.ts
-```
+See [Deployment Guide](deployment.md) for detailed deployment instructions.
