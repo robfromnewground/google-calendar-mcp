@@ -119,9 +119,10 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         testFactory.endTimer('list-tools', startTime, true);
         
         expect(tools.tools).toBeDefined();
-        expect(tools.tools.length).toBe(8);
+        expect(tools.tools.length).toBe(9);
         
         const toolNames = tools.tools.map(t => t.name);
+        expect(toolNames).toContain('get-current-time');
         expect(toolNames).toContain('list-calendars');
         expect(toolNames).toContain('list-events');
         expect(toolNames).toContain('search-events');
@@ -171,6 +172,61 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         expect((result.content as any)[0].text).toContain('Available event colors');
       } catch (error) {
         testFactory.endTimer('list-colors', startTime, false, String(error));
+        throw error;
+      }
+    });
+
+    it('should get current time without timezone parameter', async () => {
+      const startTime = testFactory.startTimer('get-current-time');
+      
+      try {
+        const result = await client.callTool({
+          name: 'get-current-time',
+          arguments: {}
+        });
+        
+        testFactory.endTimer('get-current-time', startTime, true);
+        
+        expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+        
+        const response = JSON.parse((result.content as any)[0].text);
+        expect(response.currentTime).toBeDefined();
+        expect(response.currentTime.utc).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+        expect(response.currentTime.timestamp).toBeTypeOf('number');
+        expect(response.currentTime.systemTimeZone).toBeDefined();
+        expect(response.currentTime.note).toContain('HTTP mode');
+      } catch (error) {
+        testFactory.endTimer('get-current-time', startTime, false, String(error));
+        throw error;
+      }
+    });
+
+    it('should get current time with timezone parameter', async () => {
+      const startTime = testFactory.startTimer('get-current-time-with-timezone');
+      
+      try {
+        const result = await client.callTool({
+          name: 'get-current-time',
+          arguments: {
+            timeZone: 'America/Los_Angeles'
+          }
+        });
+        
+        testFactory.endTimer('get-current-time-with-timezone', startTime, true);
+        
+        expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+        
+        const response = JSON.parse((result.content as any)[0].text);
+        expect(response.currentTime).toBeDefined();
+        expect(response.currentTime.utc).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+        expect(response.currentTime.timestamp).toBeTypeOf('number');
+        expect(response.currentTime.requestedTimeZone).toBeDefined();
+        expect(response.currentTime.requestedTimeZone.timeZone).toBe('America/Los_Angeles');
+        expect(response.currentTime.requestedTimeZone.rfc3339).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+        expect(response.currentTime).not.toHaveProperty('systemTimeZone');
+        expect(response.currentTime).not.toHaveProperty('note');
+      } catch (error) {
+        testFactory.endTimer('get-current-time-with-timezone', startTime, false, String(error));
         throw error;
       }
     });

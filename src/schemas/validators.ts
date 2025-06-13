@@ -46,6 +46,10 @@ export const ListEventsArgumentsSchema = z.object({
   }
 );
 
+export const GetCurrentTimeArgumentsSchema = z.object({
+  timeZone: z.string().optional().describe("Optional IANA timezone (e.g., 'America/Los_Angeles'). Defaults to system timezone if not provided."),
+});
+
 export const SearchEventsArgumentsSchema = z.object({
   calendarId: z.string(),
   query: z.string(),
