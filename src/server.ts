@@ -49,6 +49,11 @@ export class GoogleCalendarMcpServer {
   }
 
   private async handleStartupAuthentication(): Promise<void> {
+    // Skip authentication in test environment
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
+    
     const accountMode = this.tokenManager.getAccountMode();
     
     if (this.config.transport.type === 'stdio') {

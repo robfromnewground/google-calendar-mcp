@@ -94,7 +94,9 @@ export class TokenManager {
         multiAccountTokens[this.accountMode] = updatedTokens;
         await this.saveMultiAccountTokens(multiAccountTokens);
         
-        process.stderr.write(`Tokens updated and saved for ${this.accountMode} account\n`);
+        if (process.env.NODE_ENV !== 'test') {
+          process.stderr.write(`Tokens updated and saved for ${this.accountMode} account\n`);
+        }
       } catch (error: unknown) {
         // Handle case where file might not exist yet
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') { 
@@ -103,7 +105,9 @@ export class TokenManager {
               [this.accountMode]: newTokens
             };
             await this.saveMultiAccountTokens(multiAccountTokens);
-            process.stderr.write(`New tokens saved for ${this.accountMode} account\n`);
+            if (process.env.NODE_ENV !== 'test') {
+              process.stderr.write(`New tokens saved for ${this.accountMode} account\n`);
+            }
           } catch (writeError) {
             process.stderr.write("Error saving initial tokens: ");
             if (writeError) {
@@ -185,12 +189,16 @@ export class TokenManager {
       const tokens = multiAccountTokens[this.accountMode];
 
       if (!tokens || typeof tokens !== "object") {
-        process.stderr.write(`No tokens found for ${this.accountMode} account in file: ${this.tokenPath}\n`);
+        if (process.env.NODE_ENV !== 'test') {
+          process.stderr.write(`No tokens found for ${this.accountMode} account in file: ${this.tokenPath}\n`);
+        }
         return false;
       }
 
       this.oauth2Client.setCredentials(tokens);
-      process.stderr.write(`Loaded tokens for ${this.accountMode} account\n`);
+      if (process.env.NODE_ENV !== 'test') {
+        process.stderr.write(`Loaded tokens for ${this.accountMode} account\n`);
+      }
       return true;
     } catch (error: unknown) {
       process.stderr.write(`Error loading tokens for ${this.accountMode} account: `);
