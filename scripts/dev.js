@@ -58,28 +58,28 @@ const commands = {
   // Unit Testing
   'test': {
     description: 'Run unit tests (excludes integration tests)',
-    cmd: 'npx',
-    args: ['vitest', 'run', '--exclude', 'src/integration/**']
+    cmd: 'npm',
+    args: ['test']
   },
-  'test:integration': {
+  'test:integration:direct': {
     description: 'Run core integration tests (recommended for development)',
     cmd: 'npx',
-    args: ['vitest', 'run', 'src/integration/direct-integration.test.ts']
+    args: ['vitest', 'run', 'src/tests/integration/direct-integration.test.ts']
   },
   'test:integration:claude': {
     description: 'Run Claude + MCP integration tests',
     cmd: 'npx',
-    args: ['vitest', 'run', 'src/integration/claude-mcp-integration.test.ts']
+    args: ['vitest', 'run', 'src/tests/integration/claude-mcp-integration.test.ts']
   },
   'test:integration:openai': {
     description: 'Run OpenAI + MCP integration tests',
     cmd: 'npx',
-    args: ['vitest', 'run', 'src/integration/openai-mcp-integration.test.ts']
+    args: ['vitest', 'run', 'src/tests/integration/openai-mcp-integration.test.ts']
   },
   'test:integration:all': {
     description: 'Run complete integration test suite',
-    cmd: 'npx',
-    args: ['vitest', 'run', 'src/integration/']
+    cmd: 'npm',
+    args: ['run', 'test:integration']
   },
   'test:watch:all': {
     description: 'Run all tests in watch mode',
@@ -117,7 +117,7 @@ function showHelp() {
     'HTTP Transport': ['http', 'http:public'],
     'Authentication': ['auth', 'auth:test', 'account:status', 'account:clear:normal', 'account:clear:test'],
     'Unit Testing': ['test'],
-    'Integration Testing': ['test:integration', 'test:integration:claude', 'test:integration:openai', 'test:integration:all', 'test:watch:all'],
+    'Integration Testing': ['test:integration:direct', 'test:integration:claude', 'test:integration:openai', 'test:integration:all', 'test:watch:all'],
     'Coverage & Analysis': ['coverage'],
     'Schema Validation': ['validate-schemas', 'test:schemas']
   };
@@ -134,7 +134,7 @@ function showHelp() {
 
   console.log('Examples:');
   console.log('  npm run dev http                  # Start HTTP server');
-  console.log('  npm run dev test:integration      # Run core integration tests');
+  console.log('  npm run dev test:integration:direct # Run core integration tests');
   console.log('  npm run dev account:status        # Check auth status');
 }
 

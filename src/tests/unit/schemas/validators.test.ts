@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { UpdateEventArgumentsSchema, ListEventsArgumentsSchema } from './validators.js';
+import { UpdateEventArgumentsSchema, ListEventsArgumentsSchema } from '../../../schemas/validators.js';
 
 // Helper to generate a future date string in the correct format (without milliseconds)
 function getFutureDateString(daysFromNow: number = 365): string {

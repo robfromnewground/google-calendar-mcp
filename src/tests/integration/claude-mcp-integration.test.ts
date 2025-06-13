@@ -8,12 +8,22 @@ import { TestDataFactory } from './test-data-factory.js';
 /**
  * Complete Claude Haiku + MCP Integration Tests
  * 
+ * REQUIREMENTS TO RUN THESE TESTS:
+ * 1. Valid Google OAuth credentials file at path specified by GOOGLE_OAUTH_CREDENTIALS env var
+ * 2. Authenticated test account: Run `npm run dev auth:test` first
+ * 3. CLAUDE_API_KEY environment variable set to valid Anthropic API key
+ * 4. TEST_CALENDAR_ID, INVITEE_1, INVITEE_2 environment variables set
+ * 5. Network access to both Google Calendar API and Anthropic API
+ * 
  * These tests implement a full end-to-end integration where:
  * 1. Claude Haiku receives natural language prompts
  * 2. Claude selects and calls MCP tools
  * 3. Tools are executed against your real MCP server
  * 4. Real Google Calendar operations are performed
  * 5. Results are returned to Claude for response generation
+ * 
+ * WARNING: These tests will create, modify, and delete real calendar events
+ * and consume Claude API credits.
  */
 
 interface ToolCall {
@@ -238,7 +248,7 @@ describe('Complete Claude Haiku + MCP Integration Tests', () => {
     console.log('🔌 Starting MCP server...');
     serverProcess = spawn('node', ['build/index.js'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
+      env: { ...process.env, NODE_ENV: 'test', GOOGLE_ACCOUNT_MODE: 'test' }
     });
 
     // Wait for server to start
@@ -258,7 +268,7 @@ describe('Complete Claude Haiku + MCP Integration Tests', () => {
     const transport = new StdioClientTransport({
       command: 'node',
       args: ['build/index.js'],
-      env: { ...process.env, GOOGLE_ACCOUNT_MODE: 'test' }
+      env: { ...process.env, NODE_ENV: 'test', GOOGLE_ACCOUNT_MODE: 'test' }
     });
     
     await mcpClient.connect(transport);

@@ -189,16 +189,12 @@ export class TokenManager {
       const tokens = multiAccountTokens[this.accountMode];
 
       if (!tokens || typeof tokens !== "object") {
-        if (process.env.NODE_ENV !== 'test') {
-          process.stderr.write(`No tokens found for ${this.accountMode} account in file: ${this.tokenPath}\n`);
-        }
+        process.stderr.write(`No tokens found for ${this.accountMode} account in file: ${this.tokenPath}\n`);
         return false;
       }
 
       this.oauth2Client.setCredentials(tokens);
-      if (process.env.NODE_ENV !== 'test') {
-        process.stderr.write(`Loaded tokens for ${this.accountMode} account\n`);
-      }
+      process.stderr.write(`Loaded tokens for ${this.accountMode} account\n`);
       return true;
     } catch (error: unknown) {
       process.stderr.write(`Error loading tokens for ${this.accountMode} account: `);
@@ -261,10 +257,8 @@ export class TokenManager {
   }
 
   async validateTokens(accountMode?: 'normal' | 'test'): Promise<boolean> {
-    // In test environment, always return true to skip actual token validation
-    if (process.env.NODE_ENV === 'test') {
-      return true;
-    }
+    // For unit tests that don't need real authentication, they should mock at the handler level
+    // Integration tests always need real tokens
 
     const modeToValidate = accountMode || this.accountMode;
     const currentMode = this.accountMode;

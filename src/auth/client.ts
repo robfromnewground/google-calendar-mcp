@@ -34,15 +34,8 @@ async function loadCredentialsWithFallback(): Promise<OAuthCredentials> {
 }
 
 export async function initializeOAuth2Client(): Promise<OAuth2Client> {
-  // In test environment, return a mock OAuth client
-  if (process.env.NODE_ENV === 'test') {
-    return new OAuth2Client({
-      clientId: 'test-client-id',
-      clientSecret: 'test-client-secret',
-      redirectUri: 'http://localhost:3000/oauth2callback',
-    });
-  }
-
+  // Always use real OAuth credentials - no mocking.
+  // Unit tests should mock at the handler level, integration tests need real credentials.
   try {
     const credentials = await loadCredentialsWithFallback();
     

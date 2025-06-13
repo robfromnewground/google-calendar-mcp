@@ -8,12 +8,22 @@ import { TestDataFactory } from './test-data-factory.js';
 /**
  * Complete OpenAI GPT + MCP Integration Tests
  * 
+ * REQUIREMENTS TO RUN THESE TESTS:
+ * 1. Valid Google OAuth credentials file at path specified by GOOGLE_OAUTH_CREDENTIALS env var
+ * 2. Authenticated test account: Run `npm run dev auth:test` first
+ * 3. OPENAI_API_KEY environment variable set to valid OpenAI API key
+ * 4. TEST_CALENDAR_ID, INVITEE_1, INVITEE_2 environment variables set
+ * 5. Network access to both Google Calendar API and OpenAI API
+ * 
  * These tests implement a full end-to-end integration where:
  * 1. OpenAI GPT receives natural language prompts
  * 2. GPT selects and calls MCP tools
  * 3. Tools are executed against your real MCP server
  * 4. Real Google Calendar operations are performed
  * 5. Results are returned to GPT for response generation
+ * 
+ * WARNING: These tests will create, modify, and delete real calendar events
+ * and consume OpenAI API credits.
  */
 
 interface ToolCall {

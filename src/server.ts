@@ -7,8 +7,8 @@ import { initializeOAuth2Client } from './auth/client.js';
 import { AuthServer } from './auth/server.js';
 import { TokenManager } from './auth/tokenManager.js';
 
-// Import tool definitions
-import { registerAllTools } from './tools/definitions.js';
+// Import tool registry
+import { ToolRegistry } from './tools/registry.js';
 
 // Import transport handlers
 import { StdioTransportHandler } from './transports/stdio.js';
@@ -83,7 +83,7 @@ export class GoogleCalendarMcpServer {
   }
 
   private registerTools(): void {
-    registerAllTools(this.server, this.executeWithHandler.bind(this));
+    ToolRegistry.registerAll(this.server, this.executeWithHandler.bind(this));
   }
 
   private async ensureAuthenticated(): Promise<void> {

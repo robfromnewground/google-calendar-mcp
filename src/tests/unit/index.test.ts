@@ -6,9 +6,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { OAuth2Client } from "google-auth-library";
 
 // Import tool handlers to test them directly
-import { ListCalendarsHandler } from "./handlers/core/ListCalendarsHandler.js";
-import { CreateEventHandler } from "./handlers/core/CreateEventHandler.js";
-import { ListEventsHandler } from "./handlers/core/ListEventsHandler.js";
+import { ListCalendarsHandler } from "../../handlers/core/ListCalendarsHandler.js";
+import { CreateEventHandler } from "../../handlers/core/CreateEventHandler.js";
+import { ListEventsHandler } from "../../handlers/core/ListEventsHandler.js";
 
 // Mock OAuth2Client
 vi.mock('google-auth-library', () => ({
@@ -198,7 +198,7 @@ describe('Google Calendar MCP Server', () => {
         process.env.DEBUG = 'true';
 
         // Import config parser after setting env vars
-        const { parseArgs } = await import('./config/TransportConfig.js');
+        const { parseArgs } = await import('../../config/TransportConfig.js');
         
         const config = parseArgs([]);
 
@@ -220,7 +220,7 @@ describe('Google Calendar MCP Server', () => {
         process.env.TRANSPORT = 'http';
         process.env.PORT = '4000';
 
-        const { parseArgs } = await import('./config/TransportConfig.js');
+        const { parseArgs } = await import('../../config/TransportConfig.js');
         
         // CLI arguments should override env vars
         const config = parseArgs(['--transport', 'stdio', '--port', '5000']);

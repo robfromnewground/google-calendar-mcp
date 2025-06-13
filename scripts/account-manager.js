@@ -80,8 +80,11 @@ async function runCommand(command, args, env = {}) {
   });
 }
 
+// Import shared path utilities
+import { getSecureTokenPath } from '../src/auth/paths.js';
+
 async function loadTokens() {
-  const tokenPath = path.join(projectRoot, '.gcp-saved-tokens.json');
+  const tokenPath = getSecureTokenPath();
   try {
     const content = await fs.readFile(tokenPath, 'utf-8');
     return JSON.parse(content);
@@ -210,7 +213,7 @@ async function clearAccount(accountMode) {
     
     delete tokens[accountMode];
     
-    const tokenPath = path.join(projectRoot, '.gcp-saved-tokens.json');
+    const tokenPath = getSecureTokenPath();
     
     if (Object.keys(tokens).length === 0) {
       await fs.unlink(tokenPath);

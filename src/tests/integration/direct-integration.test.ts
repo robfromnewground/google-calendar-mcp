@@ -7,8 +7,16 @@ import { TestDataFactory, TestEvent } from './test-data-factory.js';
 /**
  * Comprehensive Integration Tests for Google Calendar MCP
  * 
- * These tests exercise all MCP tools against a real test calendar:
- * set via the env var TEST_CALENDAR_ID
+ * REQUIREMENTS TO RUN THESE TESTS:
+ * 1. Valid Google OAuth credentials file at path specified by GOOGLE_OAUTH_CREDENTIALS env var
+ * 2. Authenticated test account: Run `npm run dev auth:test` first
+ * 3. TEST_CALENDAR_ID environment variable set to a real Google Calendar ID
+ * 4. Network access to Google Calendar API
+ * 
+ * These tests exercise all MCP tools against a real test calendar and will:
+ * - Create, modify, and delete real calendar events
+ * - Make actual API calls to Google Calendar
+ * - Require valid authentication tokens
  * 
  * Test Strategy:
  * 1. Create test events first

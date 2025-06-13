@@ -7,9 +7,9 @@ import { calendar_v3 } from 'googleapis';
 import { z } from 'zod';
 
 // Import the types and schemas we're testing
-import { ListEventsArgumentsSchema } from '../../schemas/validators.js';
-import { ListEventsHandler } from './ListEventsHandler.js';
-import { formatEventList } from '../utils.js';
+import { ListEventsArgumentsSchema } from '../../../schemas/validators.js';
+import { ListEventsHandler } from '../../../handlers/core/ListEventsHandler.js';
+import { formatEventList } from '../../../handlers/utils.js';
 
 // Mock the BatchRequestHandler that we'll implement
 class MockBatchRequestHandler {

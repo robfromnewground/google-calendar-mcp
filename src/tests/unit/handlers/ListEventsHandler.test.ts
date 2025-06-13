@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ListEventsHandler } from './ListEventsHandler.js';
+import { ListEventsHandler } from '../../../handlers/core/ListEventsHandler.js';
 import { OAuth2Client } from 'google-auth-library';
 
 describe('ListEventsHandler JSON String Handling', () => {
