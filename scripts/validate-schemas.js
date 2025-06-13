@@ -83,8 +83,6 @@ async function validateSchemas() {
 
   } catch (error) {
     console.error('\n❌ Validation failed:', error.message);
-    console.error('Stack trace:', error.stack);
-    console.error('Full error object:', error);
     exitCode = 1;
   } finally {
     if (mcpClient) {

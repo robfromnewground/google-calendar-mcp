@@ -168,10 +168,6 @@ describe('Console Statement Detection', () => {
         'For debugging, consider using a proper logging library or remove before committing.'
       ].join('\n');
 
-      // Log the files that were checked for debugging
-      process.stderr.write(`\nChecked ${sourceFiles.length} files:\n`);
-      sourceFiles.forEach(file => process.stderr.write(`  - ${file}\n`));
-      
       expect(allFindings).toEqual([]);
       throw new Error(errorMessage);
     }
