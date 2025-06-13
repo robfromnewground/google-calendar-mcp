@@ -9,6 +9,8 @@ export default defineConfig({
     env: loadEnv('', process.cwd(), ''),
     // Increase timeout for AI API calls
     testTimeout: 30000,
+    // Exclude integration tests by default (they require credentials)
+    exclude: ['**/node_modules/**', 'src/integration/**'],
     // If using ESM, ensure module resolution is handled correctly
     // You might not need alias if your tsconfig paths work, but it can be explicit:
     // alias: {
