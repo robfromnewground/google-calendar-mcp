@@ -50,8 +50,8 @@ async function runAuthServer(): Promise<void> {
 
     if (!success && !authServerInstance.authCompletedSuccessfully) {
       // Failed to start and tokens weren't already valid
-      console.error(
-        "Authentication failed. Could not start server or validate existing tokens. Check port availability (3000-3004) and try again."
+      process.stderr.write(
+        "Authentication failed. Could not start server or validate existing tokens. Check port availability (3000-3004) and try again.\n"
       );
       process.exit(1);
     } else if (authServerInstance.authCompletedSuccessfully) {
@@ -75,7 +75,7 @@ async function runAuthServer(): Promise<void> {
       }
     }, 1000);
   } catch (error) {
-    console.error("Authentication failed:", error);
+    process.stderr.write(`Authentication failed: ${error}\n`);
     process.exit(1);
   }
 }
@@ -142,7 +142,7 @@ const { command } = parseCliArgs();
 switch (command) {
   case "auth":
     runAuthServer().catch((error) => {
-      console.error("Authentication failed:", error);
+      process.stderr.write(`Authentication failed: ${error}\n`);
       process.exit(1);
     });
     break;
@@ -164,7 +164,7 @@ switch (command) {
     showHelp();
     break;
   default:
-    console.error(`Unknown command: ${command}`);
+    process.stderr.write(`Unknown command: ${command}\n`);
     showHelp();
     process.exit(1);
 }

@@ -136,7 +136,7 @@ export class TokenManager {
       const legacyTokens = JSON.parse(await fs.readFile(legacyPath, "utf-8"));
       
       if (!legacyTokens || typeof legacyTokens !== "object") {
-        console.error("Invalid legacy token format, skipping migration");
+        process.stderr.write("Invalid legacy token format, skipping migration\n");
         return false;
       }
 
@@ -148,19 +148,19 @@ export class TokenManager {
         mode: 0o600,
       });
       
-      console.error("Migrated tokens from legacy location:", legacyPath, "to:", this.tokenPath);
+      process.stderr.write(`Migrated tokens from legacy location: ${legacyPath} to: ${this.tokenPath}\n`);
       
       // Optionally remove legacy file after successful migration
       try {
         await fs.unlink(legacyPath);
-        console.error("Removed legacy token file");
+        process.stderr.write("Removed legacy token file\n");
       } catch (unlinkErr) {
-        console.error("Warning: Could not remove legacy token file:", unlinkErr);
+        process.stderr.write(`Warning: Could not remove legacy token file: ${unlinkErr}\n`);
       }
       
       return true;
     } catch (error) {
-      console.error("Error migrating legacy tokens:", error);
+      process.stderr.write(`Error migrating legacy tokens: ${error}\n`);
       return false;
     }
   }
