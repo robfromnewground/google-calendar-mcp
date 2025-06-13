@@ -43,6 +43,14 @@ interface ToolDefinition {
   handlerFunction?: (args: any) => Promise<any>;
 }
 
+interface ObjectJsonSchema {
+  type: string;
+  properties?: Record<string, any>;
+  required?: string[];
+  additionalProperties?: any;
+  $schema?: string;
+}
+
 export class ToolRegistry {
   private static tools: ToolDefinition[] = [
     {
@@ -55,12 +63,22 @@ export class ToolRegistry {
       name: "list-events",
       description: "List events from one or more calendars",
       schema: z.object({
-        calendarId: z.string().describe("ID of the calendar(s) to list events from. Accepts either a single calendar ID string or an array of calendar IDs (passed as JSON string like '[\"cal1\", \"cal2\"]')"),
+        calendarId: z.string().describe(
+          "ID of the calendar(s) to list events from. Accepts either a single calendar ID string or an array of calendar IDs (passed as JSON string like '[\"cal1\", \"cal2\"]')"
+        ),
         timeMin: TimeMinSchema,
         timeMax: TimeMaxSchema
       }),
       handler: ListEventsHandler,
-      handlerFunction: async ({ calendarId, timeMin, timeMax }: { calendarId: string | string[], timeMin: string, timeMax: string }) => {
+      handlerFunction: async ({ 
+        calendarId, 
+        timeMin, 
+        timeMax 
+      }: { 
+        calendarId: string | string[], 
+        timeMin: string, 
+        timeMax: string 
+      }) => {
         // Validate and preprocess calendarId input
         let processedCalendarId = calendarId;
         
@@ -83,7 +101,9 @@ export class ToolRegistry {
               throw new Error('JSON string must contain an array of non-empty strings');
             }
           } catch (error) {
-            throw new Error(`Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
+            throw new Error(
+              `Invalid JSON format for calendarId: ${error instanceof Error ? error.message : 'Unknown parsing error'}`
+            );
           }
         }
         
@@ -111,7 +131,9 @@ export class ToolRegistry {
       description: "Search for events in a calendar by text query",
       schema: z.object({
         calendarId: CalendarIdSchema,
-        query: z.string().describe("Free text search query (searches summary, description, location, attendees, etc.)"),
+        query: z.string().describe(
+          "Free text search query (searches summary, description, location, attendees, etc.)"
+        ),
         timeMin: TimeMinSchema,
         timeMax: TimeMaxSchema
       }),
@@ -130,14 +152,24 @@ export class ToolRegistry {
         calendarId: CalendarIdSchema,
         summary: z.string().describe("Title of the event"),
         description: z.string().optional().describe("Description/notes for the event"),
-        start: RFC3339DateTimeSchema.describe("Event start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."),
-        end: RFC3339DateTimeSchema.describe("Event end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
-        timeZone: z.string().describe("Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles)"),
+        start: RFC3339DateTimeSchema.describe(
+          "Event start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."
+        ),
+        end: RFC3339DateTimeSchema.describe(
+          "Event end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."
+        ),
+        timeZone: z.string().describe(
+          "Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles)"
+        ),
         location: z.string().optional().describe("Location of the event"),
         attendees: z.array(AttendeeSchema).optional().describe("List of attendee email addresses"),
-        colorId: z.string().optional().describe("Color ID for the event (use list-colors to see available IDs)"),
+        colorId: z.string().optional().describe(
+          "Color ID for the event (use list-colors to see available IDs)"
+        ),
         reminders: RemindersSchema.optional(),
-        recurrence: z.array(z.string()).optional().describe("Recurrence rules in RFC5545 format (e.g., [\"RRULE:FREQ=WEEKLY;COUNT=5\"])")
+        recurrence: z.array(z.string()).optional().describe(
+          "Recurrence rules in RFC5545 format (e.g., [\"RRULE:FREQ=WEEKLY;COUNT=5\"])"
+        )
       }),
       handler: CreateEventHandler
     },
@@ -149,18 +181,30 @@ export class ToolRegistry {
         eventId: z.string().describe("ID of the event to update"),
         summary: z.string().optional().describe("Updated title of the event"),
         description: z.string().optional().describe("Updated description/notes"),
-        start: RFC3339DateTimeSchema.optional().describe("Updated start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."),
-        end: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Updated end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."),
+        start: RFC3339DateTimeSchema.optional().describe(
+          "Updated start time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T10:00:00Z' (UTC) or '2024-01-01T10:00:00-08:00' (Pacific). NEVER use '2024-01-01T10:00:00' without timezone."
+        ),
+        end: RFC3339DateTimeSchema.optional().describe(
+          "Updated end time - CRITICAL: Must be RFC3339 format with timezone. Examples: '2024-01-01T11:00:00Z' (UTC) or '2024-01-01T11:00:00-08:00' (Pacific). NEVER use '2024-01-01T11:00:00' without timezone."
+        ),
         timeZone: z.string().describe("Updated timezone"),
         location: z.string().optional().describe("Updated location"),
         attendees: z.array(AttendeeSchema).optional().describe("Updated attendee list"),
         colorId: z.string().optional().describe("Updated color ID"),
         reminders: RemindersSchema.optional(),
         recurrence: z.array(z.string()).optional().describe("Updated recurrence rules"),
-        sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe("Whether to send update notifications"),
-        modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe("Scope for recurring event modifications"),
-        originalStartTime: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Original start time of recurring event instance - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisEventOnly' scope."),
-        futureStartDate: z.string().datetime({ offset: true }).regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/).optional().describe("Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope.")
+        sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe(
+          "Whether to send update notifications"
+        ),
+        modificationScope: z.enum(["thisAndFollowing", "all", "thisEventOnly"]).optional().describe(
+          "Scope for recurring event modifications"
+        ),
+        originalStartTime: RFC3339DateTimeSchema.optional().describe(
+          "Original start time of recurring event instance - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisEventOnly' scope."
+        ),
+        futureStartDate: RFC3339DateTimeSchema.optional().describe(
+          "Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope."
+        )
       }),
       handler: UpdateEventHandler
     },
@@ -170,7 +214,9 @@ export class ToolRegistry {
       schema: z.object({
         calendarId: CalendarIdSchema,
         eventId: z.string().describe("ID of the event to delete"),
-        sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe("Whether to send cancellation notifications")
+        sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe(
+          "Whether to send cancellation notifications"
+        )
       }),
       handler: DeleteEventHandler
     },
@@ -180,12 +226,18 @@ export class ToolRegistry {
       schema: z.object({
         calendars: z.array(z.object({
           id: CalendarIdSchema
-        })).describe("List of calendars and/or groups to query for free/busy information"),
+        })).describe(
+          "List of calendars and/or groups to query for free/busy information"
+        ),
         timeMin: TimeMinSchema,
         timeMax: TimeMaxSchema,
         timeZone: z.string().optional().describe("Timezone for the query"),
-        groupExpansionMax: z.number().int().max(100).optional().describe("Maximum number of calendars to expand per group (max 100)"),
-        calendarExpansionMax: z.number().int().max(50).optional().describe("Maximum number of calendars to expand (max 50)")
+        groupExpansionMax: z.number().int().max(100).optional().describe(
+          "Maximum number of calendars to expand per group (max 100)"
+        ),
+        calendarExpansionMax: z.number().int().max(50).optional().describe(
+          "Maximum number of calendars to expand (max 50)"
+        )
       }),
       handler: FreeBusyEventHandler
     },
@@ -193,7 +245,9 @@ export class ToolRegistry {
       name: "get-current-time",
       description: "Get current system time and timezone information. Only use when explicitly asked for current time/date, not for event scheduling or calendar operations.",
       schema: z.object({
-        timeZone: z.string().optional().describe("Optional IANA timezone (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). If not provided, returns UTC time and system timezone for reference.")
+        timeZone: z.string().optional().describe(
+          "Optional IANA timezone (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). If not provided, returns UTC time and system timezone for reference."
+        )
       }),
       handler: GetCurrentTimeHandler
     }
@@ -201,11 +255,14 @@ export class ToolRegistry {
 
   static async registerAll(
     server: McpServer, 
-    executeWithHandler: (handler: any, args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>
+    executeWithHandler: (
+      handler: any, 
+      args: any
+    ) => Promise<{ content: Array<{ type: "text"; text: string }> }>
   ) {
     for (const tool of this.tools) {
       // Convert Zod schema to JSON Schema
-      const jsonSchema = zodToJsonSchema(tool.schema);
+      const jsonSchema = zodToJsonSchema(tool.schema) as ObjectJsonSchema;
       
       // Ensure MCP compatibility: always include properties and required fields
       if (jsonSchema.type === 'object') {
@@ -224,15 +281,10 @@ export class ToolRegistry {
         delete jsonSchema.$schema;
       }
       
-      // Debug output for testing
-      if (process.env.NODE_ENV === 'test') {
-        process.stderr.write(`Registering ${tool.name} with schema: ${JSON.stringify(jsonSchema, null, 2)}\n`);
-      }
-      
       server.tool(
         tool.name,
         tool.description,
-        jsonSchema,
+        jsonSchema as any,
         async (args: any) => {
           // Apply any custom handler function preprocessing
           const processedArgs = tool.handlerFunction ? await tool.handlerFunction(args) : args;
