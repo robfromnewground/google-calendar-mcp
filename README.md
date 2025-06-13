@@ -31,9 +31,10 @@ A Model Context Protocol (MCP) server that provides Google Calendar integration 
    - Add the following scopes (optional):
      - `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar`
    - Select "Desktop app" as the application type (Important!)
-   - Add your email address as a test user under the [OAuth Consent screen](https://console.cloud.google.com/apis/credentials/consent)
-      - Note: it will take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
-      - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week. You should be automatically prompted to go through the OAuth approval flow after expiration.
+   - Save the auth key, you'll need to add its path to the JSON in the next step
+   - Add your email address as a test user under the [Audience screen](https://console.cloud.google.com/auth/audience)
+      - Note: it might take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
+      - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week and need to be refreshed by running `npm run auth`.
 
 ### Installation
 
@@ -177,7 +178,6 @@ npx @cocal/google-calendar-mcp auth
 # For local installations
 npm run auth
 ```
-
 
 ## License
 
