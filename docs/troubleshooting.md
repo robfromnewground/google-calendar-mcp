@@ -98,7 +98,7 @@ MCP error -32000: Connection closed
 ### "Server initialization failed"
 
 **Solutions:**
-1. Check Node.js version (requires 18+):
+1. Check Node.js version (requires 22+):
    ```bash
    node --version
    ```

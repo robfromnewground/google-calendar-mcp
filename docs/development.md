@@ -6,7 +6,7 @@ This guide covers development setup, contribution guidelines, and project archit
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 22+ and npm
 - A Google Cloud project with Calendar API enabled
 - Git for version control
 - A test Google account (recommended)

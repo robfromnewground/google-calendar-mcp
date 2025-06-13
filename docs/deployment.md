@@ -75,7 +75,7 @@ docker run -d \
 ### Building Custom Image
 
 ```dockerfile
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # Copy package files
