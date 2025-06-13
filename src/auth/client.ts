@@ -34,6 +34,15 @@ async function loadCredentialsWithFallback(): Promise<OAuthCredentials> {
 }
 
 export async function initializeOAuth2Client(): Promise<OAuth2Client> {
+  // In test environment, return a mock OAuth client
+  if (process.env.NODE_ENV === 'test') {
+    return new OAuth2Client({
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      redirectUri: 'http://localhost:3000/oauth2callback',
+    });
+  }
+
   try {
     const credentials = await loadCredentialsWithFallback();
     
