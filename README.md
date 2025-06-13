@@ -6,9 +6,10 @@ A Model Context Protocol (MCP) server that provides Google Calendar integration 
 
 - **Multi-Calendar Support**: List events from multiple calendars simultaneously
 - **Event Management**: Create, update, delete, and search calendar events
-- **Recurring Events**: Advanced modification scopes for recurring events
+- **Recurring Events**: Advanced modification capabilities for recurring events
 - **Free/Busy Queries**: Check availability across calendars
 - **Smart Scheduling**: Natural language understanding for dates and times
+- **Inteligent Import**: Add calendar events from images, PDFs or web links
 
 ## Quick Start
 
@@ -17,7 +18,22 @@ A Model Context Protocol (MCP) server that provides Google Calendar integration 
 1. A Google Cloud project with the Calendar API enabled
 2. OAuth 2.0 credentials (Desktop app type)
 
-> **Need help?** See [Authentication Setup Guide](docs/authentication.md) for detailed Google Cloud configuration.
+### Google Cloud Setup
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select an existing one.
+3. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) for your project. Ensure that the right project is selected from the top bar before enabling the API.
+4. Create OAuth 2.0 credentials:
+   - Go to Credentials
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "User data" for the type of data that the app will be accessing
+   - Add your app name and contact information
+   - Add the following scopes (optional):
+     - `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar`
+   - Select "Desktop app" as the application type (Important!)
+   - Add your email address as a test user under the [OAuth Consent screen](https://console.cloud.google.com/apis/credentials/consent)
+      - Note: it will take a few minutes for the test user to be added. The OAuth consent will not allow you to proceed until the test user has propagated.
+      - Note about test mode: While an app is in test mode the auth tokens will expire after 1 week. You should be automatically prompted to go through the OAuth approval flow after expiration.
 
 ### Installation
 
@@ -25,6 +41,8 @@ A Model Context Protocol (MCP) server that provides Google Calendar integration 
 
 Add to your Claude Desktop configuration:
 
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
@@ -38,6 +56,8 @@ Add to your Claude Desktop configuration:
   }
 }
 ```
+
+**⚠️ Important Note for npx Users**: When using npx, you **must** specify the credentials file path using the `GOOGLE_OAUTH_CREDENTIALS` environment variable.
 
 **Option 2: Local Installation**
 
@@ -59,11 +79,34 @@ Then add to Claude Desktop config using the local path.
 
 ## Example Usage
 
-- "What's on my calendar tomorrow?"
-- "Schedule a meeting with John next Tuesday at 2pm"
-- "Find a free 30-minute slot this week for a quick sync"
-- "Move my 3pm meeting to Friday"
-- "Show me all events with Sarah this month"
+Along with the normal capabilities you would expect for a calendar integration you can also do really dynamic, multi-step processes like:
+
+1. **Cross-calendar availability**:
+   ```
+   Please provide availability looking at both my personal and work calendar for this upcoming week.
+   I am looking for a good time to meet with someone in London for 1 hr.
+   ```
+
+2. Add events from screenshots, images and other data sources:
+   ```
+   Add this event to my calendar based on the attached screenshot.
+   ```
+   Supported image formats: PNG, JPEG, GIF
+   Images can contain event details like date, time, location, and description
+
+3. Calendar analysis:
+   ```
+   What events do I have coming up this week that aren't part of my usual routine?
+   ```
+4. Check attendance:
+   ```
+   Which events tomorrow have attendees who have not accepted the invitation?
+   ```
+5. Auto coordinate events:
+   ```
+   Here's some available that was provided to me by someone. {available times}
+   Take a look at the times provided and let me know which ones are open on my calendar.
+   ```
 
 ## Available Tools
 
@@ -75,7 +118,7 @@ Then add to Claude Desktop config using the local path.
 | `create-event` | Create new calendar events |
 | `update-event` | Update existing events |
 | `delete-event` | Delete events |
-| `get-freebusy` | Check availability across calendars |
+| `get-freebusy` | Check availability across calendars, including external calendars |
 | `list-colors` | List available event colors |
 
 ## Documentation
@@ -96,22 +139,45 @@ Then add to Claude Desktop config using the local path.
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-## Development
-
-```bash
-npm run build          # Build the project
-npm run dev           # Development mode with auto-rebuild
-npm test              # Run unit tests
-npm run auth          # Re-authenticate
-```
-
-See [Development Guide](docs/development.md) for more commands and contribution guidelines.
 
 ## Security
 
 - OAuth tokens are stored securely in your system's config directory
 - Credentials never leave your local machine
 - All calendar operations require explicit user consent
+
+### Troubleshooting
+
+1. **OAuth Credentials File Not Found:**
+   - For npx users: You **must** specify the credentials file path using `GOOGLE_OAUTH_CREDENTIALS`
+   - Verify file paths are absolute and accessible
+
+2. **Authentication Errors:**
+   - Ensure your credentials file contains credentials for a **Desktop App** type
+   - Verify your user email is added as a **Test User** in the Google Cloud OAuth Consent screen
+   - Try deleting saved tokens and re-authenticating
+   - Check that no other process is blocking ports 3000-3004
+
+3. **Tokens Expire Weekly:**
+   - If your Google Cloud app is in **Testing** mode, refresh tokens expire after 7 days
+   - Consider moving your app to **Production** for longer-lived refresh tokens (requires Google verification)
+
+4. **Build Errors:**
+   - Run `npm install` again
+   - Check Node.js version (use LTS)
+   - Delete the `build/` directory and run `npm run build`
+
+### Manual Authentication
+For re-authentication or troubleshooting:
+```bash
+# For npx installations
+export GOOGLE_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
+npx @cocal/google-calendar-mcp auth
+
+# For local installations
+npm run auth
+```
+
 
 ## License
 
