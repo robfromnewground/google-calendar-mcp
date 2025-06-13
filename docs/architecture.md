@@ -21,6 +21,22 @@ OAuth 2.0 with refresh tokens, multi-account support, secure storage in `~/.conf
 Client → Transport → Schema Validation → Handler → Google API → Response
 ```
 
+## MCP Resources
+
+The server provides contextual resources that LLMs can access for enhanced calendar operations:
+
+### DateTime Resource (`datetime://current`)
+
+Provides real-time date/time context including:
+- ISO 8601 timestamp with timezone
+- User's local timezone 
+- Human-readable local time
+- Day of week, week number, quarter
+- Weekend detection
+- Unix timestamp
+
+This helps Claude understand temporal context when creating, updating, or interpreting calendar events.
+
 ## Key Features
 
 - **Auto-registration**: Handlers automatically discovered
@@ -28,3 +44,4 @@ Client → Transport → Schema Validation → Handler → Google API → Respon
 - **Rate limiting**: Respects Google Calendar quotas
 - **Batch operations**: Efficient multi-calendar queries
 - **Recurring events**: Advanced modification scopes
+- **Contextual resources**: Real-time date/time information

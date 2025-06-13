@@ -4,7 +4,7 @@ This guide covers advanced features and use cases for the Google Calendar MCP Se
 
 ## Multi-Account Support
 
-The server supports managing multiple Google accounts (e.g., personal and work calendars).
+The server supports managing multiple Google accounts (e.g., personal and a test calendar).
 
 ### Setup Multiple Accounts
 
