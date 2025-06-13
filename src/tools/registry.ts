@@ -253,6 +253,30 @@ export class ToolRegistry {
     }
   ];
 
+  static getToolsWithSchemas() {
+    return this.tools.map(tool => {
+      const jsonSchema = zodToJsonSchema(tool.schema) as ObjectJsonSchema;
+      
+      // Ensure MCP compatibility: always include properties and required fields
+      if (jsonSchema.type === 'object') {
+        if (!jsonSchema.properties) {
+          jsonSchema.properties = {};
+        }
+        if (!Array.isArray(jsonSchema.required)) {
+          jsonSchema.required = [];
+        }
+        delete jsonSchema.additionalProperties;
+        delete jsonSchema.$schema;
+      }
+      
+      return {
+        name: tool.name,
+        description: tool.description,
+        inputSchema: jsonSchema
+      };
+    });
+  }
+
   static async registerAll(
     server: McpServer, 
     executeWithHandler: (

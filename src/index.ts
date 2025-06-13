@@ -126,6 +126,17 @@ function parseCliArgs(): { command: string | undefined } {
       continue;
     }
     
+    // Skip transport options and their values
+    if (arg === '--transport' || arg === '--port' || arg === '--host') {
+      i++; // Skip the next argument (the value)
+      continue;
+    }
+    
+    // Skip other flags
+    if (arg === '--debug') {
+      continue;
+    }
+    
     // Check for command (first non-option argument)
     if (!command && !arg.startsWith('--')) {
       command = arg;

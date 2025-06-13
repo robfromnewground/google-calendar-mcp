@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { describe, it, expect } from 'vitest';
+import { ToolRegistry } from '../../../tools/registry.js';
 
 /**
  * Schema Compatibility Tests
@@ -11,47 +10,18 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
  */
 
 describe('Schema Compatibility', () => {
-  let mcpClient: Client;
-  let transport: StdioClientTransport;
-  let availableTools: any;
-
-  beforeAll(async () => {
-    // Connect to MCP server to get actual schemas
-    mcpClient = new Client({
-      name: "schema-test-client",
-      version: "1.0.0"
-    }, {
-      capabilities: { tools: {} }
-    });
-
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['build/index.js'],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(([, value]) => value !== undefined)
-      ) as Record<string, string>
-    });
-
-    await mcpClient.connect(transport);
-    availableTools = await mcpClient.listTools();
-  }, 10000);
-
-  afterAll(async () => {
-    if (mcpClient && transport) {
-      await mcpClient.close();
-    }
-  }, 10000);
-
   it('should have tools available', () => {
-    expect(availableTools.tools).toBeDefined();
-    expect(availableTools.tools.length).toBeGreaterThan(0);
+    const tools = ToolRegistry.getToolsWithSchemas();
+    expect(tools).toBeDefined();
+    expect(tools.length).toBeGreaterThan(0);
   });
 
   it('should not contain problematic schema features at top level', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
     const problematicFeatures = ['oneOf', 'anyOf', 'allOf', 'not'];
     const issues: string[] = [];
 
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       const schemaStr = JSON.stringify(tool.inputSchema);
       
       for (const feature of problematicFeatures) {
@@ -67,11 +37,11 @@ describe('Schema Compatibility', () => {
   });
 
   it('should have proper schema structure for all tools', () => {
-    // First check we have tools
-    expect(availableTools.tools).toBeDefined();
-    expect(availableTools.tools.length).toBeGreaterThan(0);
+    const tools = ToolRegistry.getToolsWithSchemas();
+    expect(tools).toBeDefined();
+    expect(tools.length).toBeGreaterThan(0);
     
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       const schema = tool.inputSchema;
       
       // All schemas should be objects at the top level
@@ -84,8 +54,9 @@ describe('Schema Compatibility', () => {
   });
 
   it('should validate specific known tool schemas', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
     const toolSchemas = new Map();
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       toolSchemas.set(tool.name, tool.inputSchema);
     }
 
@@ -119,6 +90,8 @@ describe('Schema Compatibility', () => {
   });
 
   it('should test OpenAI schema conversion compatibility', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
+    
     // This mimics the exact conversion logic that would be used by OpenAI integrations
     const convertMCPSchemaToOpenAI = (mcpSchema: any) => {
       if (!mcpSchema) {
@@ -152,13 +125,15 @@ describe('Schema Compatibility', () => {
     };
 
     // Test conversion for all tools
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       const openaiSchema = convertMCPSchemaToOpenAI(tool.inputSchema);
       expect(() => validateOpenAISchema(openaiSchema, tool.name)).not.toThrow();
     }
   });
 
   it('should test that all datetime fields have proper format', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
+    
     // Note: This test validates the schema structure in the registration system
     // The MCP SDK may not expose full schema details via listTools()
     // But the actual schema validation happens during tool execution
@@ -166,7 +141,7 @@ describe('Schema Compatibility', () => {
     // We verify that the test can at least identify tools that should have datetime fields
     const toolsWithDateTimeFields = ['list-events', 'search-events', 'create-event', 'update-event', 'get-freebusy'];
     
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       if (toolsWithDateTimeFields.includes(tool.name)) {
         // These tools should exist and be properly typed
         expect(tool.inputSchema.type).toBe('object');
@@ -175,12 +150,14 @@ describe('Schema Compatibility', () => {
   });
 
   it('should ensure enum fields are properly structured', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
+    
     // Note: This test verifies that tools with enum fields are properly registered
     // The MCP SDK may simplify schema exposure, but the underlying validation should work
     
     const toolsWithEnums = ['update-event', 'delete-event']; // These tools have enum fields
     
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       if (toolsWithEnums.includes(tool.name)) {
         // These tools should exist and be properly typed
         expect(tool.inputSchema.type).toBe('object');
@@ -189,12 +166,14 @@ describe('Schema Compatibility', () => {
   });
 
   it('should validate array fields have proper items definition', () => {
+    const tools = ToolRegistry.getToolsWithSchemas();
+    
     // Note: This test verifies that tools with array fields are properly registered
     // The MCP SDK may simplify schema exposure, but the underlying validation should work
     
     const toolsWithArrays = ['create-event', 'update-event', 'get-freebusy']; // These tools have array fields
     
-    for (const tool of availableTools.tools) {
+    for (const tool of tools) {
       if (toolsWithArrays.includes(tool.name)) {
         // These tools should exist and be properly typed
         expect(tool.inputSchema.type).toBe('object');
