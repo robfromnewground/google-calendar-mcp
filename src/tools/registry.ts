@@ -38,7 +38,7 @@ const AttendeeSchema = z.object({
 interface ToolDefinition {
   name: string;
   description: string;
-  schema: z.ZodType<any>;
+  schema: any;
   handler: new () => BaseToolHandler;
   handlerFunction?: (args: any) => Promise<any>;
 }
@@ -56,19 +56,19 @@ export class ToolRegistry {
     {
       name: "list-calendars",
       description: "List all available calendars",
-      schema: z.object({}),
+      schema: {},
       handler: ListCalendarsHandler
     },
     {
       name: "list-events",
       description: "List events from one or more calendars",
-      schema: z.object({
+      schema: {
         calendarId: z.string().describe(
           "ID of the calendar(s) to list events from. Accepts either a single calendar ID string or an array of calendar IDs (passed as JSON string like '[\"cal1\", \"cal2\"]')"
         ),
         timeMin: TimeMinSchema,
         timeMax: TimeMaxSchema
-      }),
+      },
       handler: ListEventsHandler,
       handlerFunction: async ({ 
         calendarId, 
@@ -129,26 +129,26 @@ export class ToolRegistry {
     {
       name: "search-events",
       description: "Search for events in a calendar by text query",
-      schema: z.object({
+      schema: {
         calendarId: CalendarIdSchema,
         query: z.string().describe(
           "Free text search query (searches summary, description, location, attendees, etc.)"
         ),
         timeMin: TimeMinSchema,
         timeMax: TimeMaxSchema
-      }),
+      },
       handler: SearchEventsHandler
     },
     {
       name: "list-colors",
       description: "List available color IDs and their meanings for calendar events",
-      schema: z.object({}),
+      schema: {},
       handler: ListColorsHandler
     },
     {
       name: "create-event",
       description: "Create a new calendar event",
-      schema: z.object({
+      schema: {
         calendarId: CalendarIdSchema,
         summary: z.string().describe("Title of the event"),
         description: z.string().optional().describe("Description/notes for the event"),
@@ -170,13 +170,13 @@ export class ToolRegistry {
         recurrence: z.array(z.string()).optional().describe(
           "Recurrence rules in RFC5545 format (e.g., [\"RRULE:FREQ=WEEKLY;COUNT=5\"])"
         )
-      }),
+      },
       handler: CreateEventHandler
     },
     {
       name: "update-event",
       description: "Update an existing calendar event with recurring event modification scope support",
-      schema: z.object({
+      schema: {
         calendarId: CalendarIdSchema,
         eventId: z.string().describe("ID of the event to update"),
         summary: z.string().optional().describe("Updated title of the event"),
@@ -205,25 +205,25 @@ export class ToolRegistry {
         futureStartDate: RFC3339DateTimeSchema.optional().describe(
           "Start date for future instances - CRITICAL: Must be RFC3339 format with timezone. Required for 'thisAndFollowing' scope."
         )
-      }),
+      },
       handler: UpdateEventHandler
     },
     {
       name: "delete-event",
       description: "Delete a calendar event",
-      schema: z.object({
+      schema: {
         calendarId: CalendarIdSchema,
         eventId: z.string().describe("ID of the event to delete"),
         sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe(
           "Whether to send cancellation notifications"
         )
-      }),
+      },
       handler: DeleteEventHandler
     },
     {
       name: "get-freebusy",
       description: "Query free/busy information for calendars. Note: Time range is limited to a maximum of 3 months between timeMin and timeMax.",
-      schema: z.object({
+      schema: {
         calendars: z.array(z.object({
           id: CalendarIdSchema
         })).describe(
@@ -238,17 +238,17 @@ export class ToolRegistry {
         calendarExpansionMax: z.number().int().max(50).optional().describe(
           "Maximum number of calendars to expand (max 50)"
         )
-      }),
+      },
       handler: FreeBusyEventHandler
     },
     {
       name: "get-current-time",
       description: "Get current system time and timezone information. Only use when explicitly asked for current time/date, not for event scheduling or calendar operations.",
-      schema: z.object({
+      schema: {
         timeZone: z.string().optional().describe(
           "Optional IANA timezone (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). If not provided, returns UTC time and system timezone for reference."
         )
-      }),
+      },
       handler: GetCurrentTimeHandler
     }
   ];
@@ -285,30 +285,10 @@ export class ToolRegistry {
     ) => Promise<{ content: Array<{ type: "text"; text: string }> }>
   ) {
     for (const tool of this.tools) {
-      // Convert Zod schema to JSON Schema
-      const jsonSchema = zodToJsonSchema(tool.schema) as ObjectJsonSchema;
-      
-      // Ensure MCP compatibility: always include properties and required fields
-      if (jsonSchema.type === 'object') {
-        // Ensure properties exists (should already be there from zodToJsonSchema)
-        if (!jsonSchema.properties) {
-          jsonSchema.properties = {};
-        }
-        
-        // Ensure required field exists as array (MCP SDK might need this)
-        if (!Array.isArray(jsonSchema.required)) {
-          jsonSchema.required = [];
-        }
-        
-        // Remove additionalProperties and $schema for MCP compatibility
-        delete jsonSchema.additionalProperties;
-        delete jsonSchema.$schema;
-      }
-      
       server.tool(
         tool.name,
         tool.description,
-        jsonSchema as any,
+        tool.schema as any,
         async (args: any) => {
           // Apply any custom handler function preprocessing
           const processedArgs = tool.handlerFunction ? await tool.handlerFunction(args) : args;
