@@ -94,18 +94,6 @@ const commands = {
     args: ['vitest', 'run', '--coverage']
   },
 
-  // Schema Validation
-  'validate-schemas': {
-    description: 'Validate MCP tool schemas for compatibility',
-    cmd: 'node',
-    args: ['scripts/validate-schemas.js'],
-    preBuild: true  // Custom flag to indicate build is needed
-  },
-  'test:schemas': {
-    description: 'Run schema validation tests',
-    cmd: 'npm',
-    args: ['run', 'dev', 'validate-schemas']
-  }
 };
 
 function showHelp() {

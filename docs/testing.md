@@ -32,11 +32,6 @@ npm run dev auth:test     # Authenticate test account
 
 **Warning:** Modifies real calendar data and consumes API credits.
 
-## Schema Validation
-
-```bash
-npm run dev validate-schemas    # Check MCP compliance
-```
 
 ## Troubleshooting
 
