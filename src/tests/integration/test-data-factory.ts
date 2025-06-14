@@ -18,6 +18,7 @@ export interface TestEvent {
   modificationScope?: "thisAndFollowing" | "all" | "thisEventOnly";
   originalStartTime?: string;
   futureStartDate?: string;
+  calendarId?: string;
 }
 
 export interface PerformanceMetric {

@@ -58,47 +58,55 @@ ALLOWED_ORIGINS=http://localhost:3000,https://myapp.com
 
 ## Docker Deployment
 
-### Using Pre-built Image
+### Using Docker Compose (Recommended)
 
 ```bash
-docker pull ghcr.io/nspady/google-calendar-mcp:latest
+# stdio mode  
+docker compose up -d server
 
+# HTTP mode
+docker compose --profile http up -d
+```
+
+See [Docker Guide](docker.md) for complete setup instructions.
+
+### Using Docker Run
+
+```bash
+# Create volume for token storage
+docker volume create mcp-tokens
+
+# stdio mode
+docker run -i \
+  -v ./gcp-oauth.keys.json:/usr/src/app/gcp-oauth.keys.json:ro \
+  -v mcp-tokens:/home/nodejs/.config/google-calendar-mcp \
+  -e TRANSPORT=stdio \
+  --name calendar-mcp \
+  google-calendar-mcp
+
+# HTTP mode
 docker run -d \
   -p 3000:3000 \
-  -v /path/to/credentials:/app/credentials \
-  -e GOOGLE_OAUTH_CREDENTIALS=/app/credentials/gcp-oauth.keys.json \
+  -v ./gcp-oauth.keys.json:/usr/src/app/gcp-oauth.keys.json:ro \
+  -v mcp-tokens:/home/nodejs/.config/google-calendar-mcp \
+  -e TRANSPORT=http \
+  -e HOST=0.0.0.0 \
   -e SESSION_SECRET=your-secure-secret \
   --name calendar-mcp \
-  ghcr.io/nspady/google-calendar-mcp:latest
+  google-calendar-mcp
+
 ```
 
 ### Building Custom Image
 
-```dockerfile
-FROM node:22-alpine
-WORKDIR /app
+Use the provided Dockerfile which includes proper user setup and token storage:
 
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy built application
-COPY build/ ./build/
-COPY gcp-oauth.keys.json ./
-
-# Security: Run as non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-USER nodejs
-
-EXPOSE 3000
-CMD ["node", "build/index.js", "--transport", "http", "--http-host", "0.0.0.0"]
-```
-
-Build and run:
 ```bash
-docker build -t calendar-mcp .
-docker run -d -p 3000:3000 --name calendar-mcp calendar-mcp
+# Build image
+docker build -t google-calendar-mcp .
+
+# Run with authentication
+docker run -it google-calendar-mcp npm run auth
 ```
 
 ## Cloud Deployment
@@ -232,16 +240,25 @@ The server exposes basic metrics:
 
 ## Production Checklist
 
+**OAuth App Setup:**
+- [ ] **Publish OAuth app to production in Google Cloud Console**
+- [ ] **Set up proper redirect URIs for your domain**
+- [ ] **Use production OAuth credentials (not test/development)**
+- [ ] **Consider submitting for verification to remove user warnings**
+
+**Infrastructure:**
 - [ ] Use HTTPS/TLS encryption
 - [ ] Set strong SESSION_SECRET
 - [ ] Configure CORS appropriately
 - [ ] Enable rate limiting
-- [ ] Set up monitoring/alerting
+- [ ] Set up monitoring/alerting for authentication failures
 - [ ] Configure log aggregation
-- [ ] Implement backup strategy
-- [ ] Test disaster recovery
+- [ ] Implement backup strategy for token storage
+- [ ] Test disaster recovery and re-authentication procedures
 - [ ] Review security headers
 - [ ] Enable graceful shutdown
+
+**Note**: The 7-day token expiration is resolved by publishing your OAuth app to production in Google Cloud Console, not by environment variables.
 
 ## Troubleshooting
 

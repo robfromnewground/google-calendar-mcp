@@ -94,6 +94,48 @@ const commands = {
     args: ['run', 'test:coverage']
   },
 
+  // Docker Operations
+  'docker:build': {
+    description: 'Build Docker image',
+    cmd: 'docker',
+    args: ['compose', 'build']
+  },
+  'docker:up': {
+    description: 'Start Docker container (stdio mode)',
+    cmd: 'docker',
+    args: ['compose', 'up']
+  },
+  'docker:up:http': {
+    description: 'Start Docker container in HTTP mode (edit docker-compose.yml first)',
+    cmd: 'docker',
+    args: ['compose', 'up']
+  },
+  'docker:down': {
+    description: 'Stop and remove Docker container',
+    cmd: 'docker',
+    args: ['compose', 'down']
+  },
+  'docker:logs': {
+    description: 'View Docker container logs',
+    cmd: 'docker',
+    args: ['compose', 'logs', '-f']
+  },
+  'docker:exec': {
+    description: 'Execute commands in running Docker container',
+    cmd: 'docker',
+    args: ['compose', 'exec', 'calendar-mcp', 'sh']
+  },
+  'docker:auth': {
+    description: 'Authenticate OAuth in Docker container',
+    cmd: 'docker',
+    args: ['compose', 'exec', 'calendar-mcp', 'npm', 'run', 'auth']
+  },
+  'docker:test:quick': {
+    description: 'Run quick Docker tests (no OAuth required)',
+    cmd: 'bash',
+    args: ['scripts/test-docker.sh', '--quick']
+  },
+
 };
 
 function showHelp() {
@@ -106,6 +148,7 @@ function showHelp() {
     'Authentication': ['auth', 'auth:test', 'account:status', 'account:clear:normal', 'account:clear:test'],
     'Unit Testing': ['test'],
     'Integration Testing': ['test:integration:direct', 'test:integration:claude', 'test:integration:openai', 'test:integration:all', 'test:watch:all'],
+    'Docker Operations': ['docker:build', 'docker:up', 'docker:up:http', 'docker:auth', 'docker:logs', 'docker:down', 'docker:exec', 'docker:test:quick'],
     'Coverage & Analysis': ['coverage']
   };
 
@@ -121,8 +164,9 @@ function showHelp() {
 
   console.log('Examples:');
   console.log('  npm run dev http                  # Start HTTP server');
+  console.log('  npm run dev docker:up             # Start Docker container');
+  console.log('  npm run dev docker:auth           # Authenticate in Docker');
   console.log('  npm run dev test:integration:direct # Run core integration tests');
-  console.log('  npm run dev account:status        # Check auth status');
 }
 
 async function runCommand(commandName) {
