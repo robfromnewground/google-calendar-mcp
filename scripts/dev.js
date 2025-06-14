@@ -90,8 +90,8 @@ const commands = {
   // Coverage and Analysis
   'coverage': {
     description: 'Generate test coverage report',
-    cmd: 'npx',
-    args: ['vitest', 'run', '--coverage']
+    cmd: 'npm',
+    args: ['run', 'test:coverage']
   },
 
 };
@@ -106,8 +106,7 @@ function showHelp() {
     'Authentication': ['auth', 'auth:test', 'account:status', 'account:clear:normal', 'account:clear:test'],
     'Unit Testing': ['test'],
     'Integration Testing': ['test:integration:direct', 'test:integration:claude', 'test:integration:openai', 'test:integration:all', 'test:watch:all'],
-    'Coverage & Analysis': ['coverage'],
-    'Schema Validation': ['validate-schemas', 'test:schemas']
+    'Coverage & Analysis': ['coverage']
   };
 
   for (const [category, cmdList] of Object.entries(categories)) {

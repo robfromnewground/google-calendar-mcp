@@ -18,6 +18,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8', // or 'istanbul'
       reporter: ['text', 'json', 'html'],
+      exclude: [
+        '**/node_modules/**',
+        'src/tests/integration/**',
+        'build/**',
+        'scripts/**',
+        '*.config.*'
+      ],
     },
   },
 }) 

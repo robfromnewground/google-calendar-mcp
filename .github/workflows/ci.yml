@@ -135,7 +135,7 @@ jobs:
       run: npm ci
       
     - name: Run tests with coverage
-      run: npx vitest run --coverage --exclude src/tests/integration/**
+      run: npm run test:coverage
       env:
         NODE_ENV: test
         
