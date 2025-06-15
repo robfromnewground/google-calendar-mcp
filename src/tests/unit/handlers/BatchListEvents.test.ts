@@ -7,7 +7,10 @@ import { calendar_v3 } from 'googleapis';
 import { z } from 'zod';
 
 // Import the types and schemas we're testing
-import { ListEventsArgumentsSchema } from '../../../schemas/validators.js';
+import { ListEventsInput, ToolSchemas } from '../../../tools/registry.js';
+
+// Get the schema for validation testing
+const ListEventsArgumentsSchema = ToolSchemas['list-events'];
 import { ListEventsHandler } from '../../../handlers/core/ListEventsHandler.js';
 import { formatEventList } from '../../../handlers/utils.js';
 

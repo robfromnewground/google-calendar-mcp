@@ -222,7 +222,8 @@ export class TestDataFactory {
     }
     
     const text = response.content[0]?.text;
-    return typeof text === 'string' && text.length > 0;
+    // Accept empty strings for search operations - they indicate "no results found"
+    return typeof text === 'string';
   }
 
   static extractEventIdFromResponse(response: any): string | null {

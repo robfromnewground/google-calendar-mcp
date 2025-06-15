@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { UpdateEventArgumentsSchema, ListEventsArgumentsSchema } from '../../../schemas/validators.js';
+import { ToolSchemas } from '../../../tools/registry.js';
+
+// Use the unified schemas from registry  
+const UpdateEventArgumentsSchema = ToolSchemas['update-event'];
+const ListEventsArgumentsSchema = ToolSchemas['list-events'];
 
 // Helper to generate a future date string in the correct format (without milliseconds)
 function getFutureDateString(daysFromNow: number = 365): string {

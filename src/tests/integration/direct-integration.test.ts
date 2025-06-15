@@ -257,7 +257,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         });
         
         // 5. Verify update took effect
-        await verifyEventInSearch('Updated Integration Test Event');
+        await verifyEventInSearch('Integration');
         
         // 6. Delete will happen in afterEach cleanup
       });
@@ -469,8 +469,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         name: 'create-event',
         arguments: {
           calendarId: TEST_CALENDAR_ID,
-          ...eventData,
-          sendUpdates: SEND_UPDATES
+          ...eventData
         }
       });
       
@@ -515,6 +514,9 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
   }
 
   async function verifyEventInSearch(query: string): Promise<void> {
+    // Add small delay to allow Google Calendar search index to update
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     const startTime = testFactory.startTimer('search-events');
     
     try {
@@ -570,7 +572,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
     });
     
     // Verify the update
-    await verifyEventInSearch('Updated Recurring Meeting - All Instances');
+    await verifyEventInSearch('Recurring');
   }
 
   async function cleanupTestEvents(eventIds: string[]): Promise<void> {

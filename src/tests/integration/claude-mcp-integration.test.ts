@@ -101,36 +101,11 @@ class RealClaudeMCPClient implements ClaudeMCPClient {
         
         console.log(`🔧 Executing ${toolCall.name} with:`, JSON.stringify(toolCall.arguments, null, 2));
         
-        let result: any;
-        
-        // Mock get-current-time to return fixed test time
-        if (toolCall.name === 'get-current-time') {
-          const testTime = new Date('2024-06-13T10:30:00.000Z');
-          const timeZone = toolCall.arguments?.timeZone || 'America/Los_Angeles';
-          
-          result = {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                currentTime: {
-                  utc: testTime.toISOString(),
-                  timestamp: testTime.getTime(),
-                  requestedTimeZone: {
-                    timeZone: timeZone,
-                    rfc3339: '2024-06-13T03:30:00-07:00',
-                    humanReadable: 'Thursday, June 13, 2024 at 03:30:00 AM Pacific Daylight Time',
-                    offset: '-07:00'
-                  }
-                }
-              })
-            }]
-          };
-        } else {
-          result = await this.mcpClient.callTool({
-            name: toolCall.name,
-            arguments: toolCall.arguments
-          });
-        }
+        // Execute all tools including get-current-time with real handlers
+        const result = await this.mcpClient.callTool({
+          name: toolCall.name,
+          arguments: toolCall.arguments
+        });
         
         this.testFactory.endTimer(`mcp-${toolCall.name}`, startTime, true);
         
@@ -184,7 +159,7 @@ class RealClaudeMCPClient implements ClaudeMCPClient {
       });
       
       const followUpMessage = await this.anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: model,
         max_tokens: 1000,
         messages: [
           {

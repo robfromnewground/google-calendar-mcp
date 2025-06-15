@@ -2,12 +2,12 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { OAuth2Client } from "google-auth-library";
 import { BaseToolHandler } from "./BaseToolHandler.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import { GetCurrentTimeArgumentsSchema } from "../../schemas/validators.js";
+import { GetCurrentTimeInput } from "../../tools/registry.js";
 
 export class GetCurrentTimeHandler extends BaseToolHandler {
     async runTool(args: any, _oauth2Client: OAuth2Client): Promise<CallToolResult> {
         // Validate arguments using schema
-        const validArgs = GetCurrentTimeArgumentsSchema.parse(args);
+        const validArgs = args as GetCurrentTimeInput;
         
         const now = new Date();
         

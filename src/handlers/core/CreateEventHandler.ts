@@ -1,14 +1,13 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { OAuth2Client } from "google-auth-library";
-import { CreateEventArgumentsSchema } from "../../schemas/validators.js";
+import { CreateEventInput } from "../../tools/registry.js";
 import { BaseToolHandler } from "./BaseToolHandler.js";
 import { calendar_v3 } from 'googleapis';
-import { z } from 'zod';
 import { formatEventWithUrl } from "../utils.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
-        const validArgs = CreateEventArgumentsSchema.parse(args);
+        const validArgs = args as CreateEventInput;
         const event = await this.createEvent(oauth2Client, validArgs);
         return {
             content: [{
@@ -20,7 +19,7 @@ export class CreateEventHandler extends BaseToolHandler {
 
     private async createEvent(
         client: OAuth2Client,
-        args: z.infer<typeof CreateEventArgumentsSchema>
+        args: CreateEventInput
     ): Promise<calendar_v3.Schema$Event> {
         try {
             const calendar = this.getCalendar(client);
