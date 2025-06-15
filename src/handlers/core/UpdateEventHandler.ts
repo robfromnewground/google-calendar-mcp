@@ -5,6 +5,7 @@ import { BaseToolHandler } from "./BaseToolHandler.js";
 import { calendar_v3 } from 'googleapis';
 import { z } from 'zod';
 import { RecurringEventHelpers, RecurringEventError, RECURRING_EVENT_ERRORS } from './RecurringEventHelpers.js';
+import { formatEventWithUrl } from "../utils.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
@@ -13,7 +14,7 @@ export class UpdateEventHandler extends BaseToolHandler {
         return {
             content: [{
                 type: "text",
-                text: `Event updated: ${event.summary} (${event.id})`,
+                text: `✅ Event updated successfully! Click the link below to view the changes in Google Calendar:\n\n${formatEventWithUrl(event, validArgs.calendarId)}`,
             }],
         };
     }
@@ -164,12 +165,4 @@ export class UpdateEventHandler extends BaseToolHandler {
         return response.data;
     }
 
-    // Keep the original updateEvent method for backward compatibility
-    private async updateEvent(
-        client: OAuth2Client,
-        args: z.infer<typeof UpdateEventArgumentsSchema>
-    ): Promise<calendar_v3.Schema$Event> {
-        // This method now just delegates to the enhanced version
-        return this.updateEventWithScope(client, args);
-    }
 }

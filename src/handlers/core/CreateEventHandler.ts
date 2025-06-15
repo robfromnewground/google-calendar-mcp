@@ -2,8 +2,9 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { OAuth2Client } from "google-auth-library";
 import { CreateEventArgumentsSchema } from "../../schemas/validators.js";
 import { BaseToolHandler } from "./BaseToolHandler.js";
-import { calendar_v3, google } from 'googleapis';
+import { calendar_v3 } from 'googleapis';
 import { z } from 'zod';
+import { formatEventWithUrl } from "../utils.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
@@ -12,7 +13,7 @@ export class CreateEventHandler extends BaseToolHandler {
         return {
             content: [{
                 type: "text",
-                text: `Event created: ${event.summary} (${event.id})`,
+                text: `✅ Event created successfully! Click the link below to view it in Google Calendar:\n\n${formatEventWithUrl(event, validArgs.calendarId)}`,
             }],
         };
     }

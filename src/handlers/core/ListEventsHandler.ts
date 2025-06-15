@@ -152,7 +152,7 @@ export class ListEventsHandler extends BaseToolHandler {
         }
         
         if (calendarIds.length === 1) {
-            return formatEventList(events);
+            return formatEventList(events, calendarIds[0]);
         }
         
         return this.formatMultiCalendarEvents(events, calendarIds);
@@ -165,7 +165,7 @@ export class ListEventsHandler extends BaseToolHandler {
         
         for (const [calendarId, calEvents] of Object.entries(grouped)) {
             output += `Calendar: ${calendarId}\n`;
-            output += formatEventList(calEvents);
+            output += formatEventList(calEvents, calendarId);
             output += '\n';
         }
         

@@ -13,7 +13,7 @@ export class SearchEventsHandler extends BaseToolHandler {
         return {
             content: [{
                 type: "text",
-                text: formatEventList(events),
+                text: formatEventList(events, validArgs.calendarId),
             }],
         };
     }

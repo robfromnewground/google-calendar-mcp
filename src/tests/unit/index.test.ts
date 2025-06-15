@@ -142,10 +142,13 @@ describe('Google Calendar MCP Server', () => {
         content: [
           {
             type: 'text',
-            text: `Event created: ${mockApiResponse.summary} (${mockApiResponse.id})`,
+            text: expect.stringContaining('✅ Event created successfully!'),
           },
         ],
       });
+      expect(result.content[0].text).toContain(mockApiResponse.summary);
+      expect(result.content[0].text).toContain(mockApiResponse.id);
+      expect(result.content[0].text).toContain('🔗 View in Google Calendar:');
     });
 
     it('should handle list-events tool correctly', async () => {
