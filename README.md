@@ -69,7 +69,7 @@ npm install
 npm run build
 ```
 
-Then add to Claude Desktop config using the local path.
+Then add to Claude Desktop config using the local path or by specifying the path with the `GOOGLE_OAUTH_CREDENTIALS` environment variable.
 
 ### First Run
 
