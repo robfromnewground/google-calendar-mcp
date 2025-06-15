@@ -17,10 +17,10 @@ services:
     
     # stdio mode by default (for Claude Desktop)
     # For HTTP mode, uncomment the next 3 lines:
-    ports:
-      - "${PORT:-3000}:3000"
-    environment:
-      TRANSPORT: http
+    # ports:
+    #   - "${PORT:-3000}:3000"
+    # environment:
+    #   TRANSPORT: http
     
     # Resource limits for production stability
     deploy:
