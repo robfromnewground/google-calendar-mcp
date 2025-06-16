@@ -1,250 +1,140 @@
 # Docker Deployment Guide
 
-Simple, production-ready Docker setup for the Google Calendar MCP Server.
+Simple, production-ready Docker setup for the Google Calendar MCP Server. Follow the quick start guide if you already have the project downloaded.
 
-## Quick Start
+## Quick Start 
 
 ```bash
-# 1. Place your OAuth credentials
-cp /path/to/your/gcp-oauth.keys.json .
+# 1. Place OAuth credentials in project root 
+# * optional if you have already place the file in the root of this project folder
+cp /path/to/your/gcp-oauth.keys.json ./gcp-oauth.keys.json
 
-# 2. Configure environment (optional)
+# 2. Copy example .env file to configure environment variables (optional)
 cp .env.example .env
 
-# 3. Start the server
-docker compose up
+# 3. Build and start the server
+docker compose up -d
+
+# 4. Authenticate (one-time setup)
+# This will show the authentication URL that needs to be 
+# visited to give authorization to the applicaiton. 
+# Visit the URL and complete the OAuth process.
+docker compose exec calendar-mcp npm run auth
+# Note: This step only needs to be done once unless the app is in testing mode
+# in which case the tokens expire after 7 days 
+
+# 5. Add to Claude Desktop config (see stdio Mode section below)
 ```
 
 ## Two Modes
 
-### stdio Mode (Default)
-**Perfect for Claude Desktop integration:**
+### stdio Mode (Recommended for Claude Desktop)
+**Direct process integration for Claude Desktop:**
 
+#### Step 1: Initial Setup
 ```bash
-# Start in stdio mode
-docker compose up
+# Clone and setup
+git clone https://github.com/nspady/google-calendar-mcp.git
+cd google-calendar-mcp
 
-# Use in Claude Desktop config:
-{
-  "mcpServers": {
-    "google-calendar": {
-      "command": "docker",
-      "args": ["exec", "-i", "calendar-mcp", "npm", "start"]
-    }
-  }
-}
-```
+# Place your OAuth credentials in the project root
+cp /path/to/your/gcp-oauth.keys.json ./gcp-oauth.keys.json
 
-### HTTP Mode
-**For remote access and web integration:**
-
-```bash
-# Edit docker-compose.yml to uncomment these lines:
-ports:
-  - "${PORT:-3000}:3000"
-environment:
-  TRANSPORT: http
-
-# Then start
-docker compose up
-
-# Test the endpoint
-curl http://localhost:3000/health
-```
-
-## Authentication Setup
-
-### Step 1: Get OAuth Credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create or select a project
-3. Enable Google Calendar API
-4. Create OAuth 2.0 credentials (Desktop Application)
-5. Download as `gcp-oauth.keys.json`
-
-### Step 2: Authenticate
-
-```bash
-# One-time authentication
-docker compose exec calendar-mcp npm run auth
-
-# Tokens are automatically persisted in Docker volume
-```
-
-## Environment Configuration
-
-Create a `.env` file for customization:
-
-```bash
-# Transport mode
-TRANSPORT=stdio  # or 'http' for HTTP mode
-
-# HTTP settings (when TRANSPORT=http)
-PORT=3000
-HOST=0.0.0.0
-ALLOWED_ORIGINS=*
-
-# Development
-DEBUG=false
-NODE_ENV=production
-
-# OAuth credentials path
-GOOGLE_OAUTH_CREDENTIALS=./gcp-oauth.keys.json
-```
-
-## Production Deployment
-
-### OAuth App Setup (Important!)
-
-For production use, **publish your OAuth app** to avoid 7-day token expiration:
-
-1. **Google Cloud Console** → **OAuth consent screen**
-2. Click **"PUBLISH APP"** or **"PUSH TO PRODUCTION"**
-3. ✅ Tokens will now persist indefinitely
-
-See [OAuth Verification Guide](oauth-verification.md) for detailed steps.
-
-### Docker Production Setup
-
-```bash
-# For HTTP mode production
-# 1. Edit docker-compose.yml to uncomment HTTP settings
-# 2. Configure environment
-echo "TRANSPORT=http" >> .env
-echo "ALLOWED_ORIGINS=https://yourdomain.com" >> .env
-
-# 3. Deploy with reverse proxy for HTTPS
-docker compose up -d
-```
-
-### Production Checklist
-
-- [ ] OAuth app published to production in Google Cloud Console
-- [ ] HTTPS/TLS via reverse proxy (nginx, traefik, etc.)
-- [ ] Appropriate CORS origins configured
-- [ ] Monitoring and logging set up
-- [ ] Backup strategy for token volume
-
-## Common Commands
-
-```bash
-# Background mode
+# Build and start the container
 docker compose up -d
 
-# View logs
-docker compose logs -f
-
-# Stop and remove
-docker compose down
-
-# Rebuild image
-docker compose build
-
-# Execute commands in container
-docker compose exec calendar-mcp npm run auth
-
-# Check token status
-docker compose exec calendar-mcp ls -la /home/nodejs/.config/google-calendar-mcp/
-```
-
-## Troubleshooting
-
-### Authentication Issues
-```bash
-# Check if credentials file exists
-ls -la gcp-oauth.keys.json
-
-# Check if mounted correctly in container
-docker compose exec calendar-mcp ls -la /app/gcp-oauth.keys.json
-
-# Re-authenticate
+# Authenticate (one-time setup)
 docker compose exec calendar-mcp npm run auth
 ```
 
-### Network Issues (HTTP mode)
-```bash
-# Check container is running
-docker compose ps
+#### Step 2: Claude Desktop Configuration
+Add to your Claude Desktop config file:
 
-# Test health endpoint
-curl http://localhost:3000/health
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-# Check logs
-docker compose logs calendar-mcp
-```
-
-### Token Persistence
-```bash
-# Check token volume
-docker volume inspect google-calendar-mcp_calendar-tokens
-
-# Check tokens in container
-docker compose exec calendar-mcp ls -la /home/nodejs/.config/google-calendar-mcp/
-```
-
-## Advanced Usage
-
-### Custom Port
-```bash
-# Set custom port in .env
-echo "PORT=8080" >> .env
-
-# Update docker-compose.yml port mapping
-ports:
-  - "8080:8080"
-```
-
-### Development Mode
-```bash
-# Enable debug logging
-echo "DEBUG=true" >> .env
-docker compose up
-```
-
-### Health Monitoring
-```bash
-# Check container health
-docker compose ps
-
-# For HTTP mode, health endpoint returns:
-curl http://localhost:3000/health
-# {"status":"healthy","server":"google-calendar-mcp","version":"1.3.0"}
-```
-
-## Integration Examples
-
-### Claude Desktop (stdio)
 ```json
 {
   "mcpServers": {
     "google-calendar": {
       "command": "docker",
-      "args": ["exec", "-i", "calendar-mcp", "npm", "start"]
+      "args": [
+        "run", "--rm", "-i",
+        "--mount", "type=bind,src=/absolute/path/to/your/gcp-oauth.keys.json,dst=/app/gcp-oauth.keys.json",
+        "--mount", "type=volume,src=google-calendar-mcp_calendar-tokens,dst=/home/nodejs/.config/google-calendar-mcp",
+        "google-calendar-mcp"
+      ]
     }
   }
 }
 ```
 
-### HTTP Client (JavaScript)
-```javascript
-// Check server health
-const response = await fetch('http://localhost:3000/health');
-const status = await response.json();
-console.log(status); // {"status":"healthy",...}
+**⚠️ Important**: Replace `/absolute/path/to/your/gcp-oauth.keys.json` with the actual absolute path to your credentials file.
+
+#### Step 3: Restart Claude Desktop
+Restart Claude Desktop to load the new configuration. The server should now work without authentication prompts.
+
+### HTTP Mode
+**For testing, debugging, and web integration (Claude Desktop uses stdio):**
+
+#### Step 1: Configure Environment
+```bash
+# Clone and setup
+git clone https://github.com/nspady/google-calendar-mcp.git
+cd google-calendar-mcp
+
+# Place your OAuth credentials in the project root
+cp /path/to/your/gcp-oauth.keys.json ./gcp-oauth.keys.json
+
+# Configure for HTTP mode
+cp .env.example .env
+# Edit .env to set:
+echo "TRANSPORT=http" >> .env
+echo "HOST=0.0.0.0" >> .env
+echo "PORT=3000" >> .env
+echo "GOOGLE_OAUTH_CREDENTIALS=./gcp-oauth.keys.json" >> .env
 ```
 
-### Production with Traefik
-```yaml
-# docker-compose.yml additions for Traefik
-labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.calendar-mcp.rule=Host(`calendar-api.yourdomain.com`)"
-  - "traefik.http.routers.calendar-mcp.tls.certresolver=letsencrypt"
+#### Step 2: Start and Authenticate
+```bash
+# Build and start the server in HTTP mode
+docker compose up -d
+
+# Authenticate (one-time setup)
+docker compose exec calendar-mcp npm run auth
+# This will show authentication URLs (visit the displayed URL)
+# This step only needs to be done once unless the app is in testing mode
+# in which case the tokens expire after 7 days 
+
+# Verify server is running
+curl http://localhost:3000/health
+# Should return: {"status":"healthy","server":"google-calendar-mcp","version":"1.3.0"}
 ```
 
-That's it! This setup provides a simple, secure, and production-ready way to run the Google Calendar MCP Server in Docker.
+#### Step 3: Test with cURL Example
+```bash
+# Run comprehensive HTTP tests
+bash examples/http-with-curl.sh
 
-For more details, see:
-- [OAuth Verification Guide](oauth-verification.md) - Solving 7-day token expiration
-- [Development Guide](development.md) - Local development setup
-- [Deployment Guide](deployment.md) - Cloud deployment options
+# Or test specific endpoint
+bash examples/http-with-curl.sh http://localhost:3000
+```
+
+#### Step 4: Claude Desktop HTTP Configuration
+Add to your Claude Desktop config file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "google-calendar": {
+      "command": "mcp-client",
+      "args": ["http://localhost:3000"]
+    }
+  }
+}
+```
+
+**Note**: HTTP mode requires the container to be running (`docker compose up -d`)

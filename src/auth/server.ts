@@ -18,7 +18,7 @@ export class AuthServer {
   constructor(oauth2Client: OAuth2Client) {
     this.baseOAuth2Client = oauth2Client;
     this.tokenManager = new TokenManager(oauth2Client);
-    this.portRange = { start: 3000, end: 3004 };
+    this.portRange = { start: 3500, end: 3505 };
   }
 
   private createServer(): http.Server {
@@ -186,14 +186,26 @@ export class AuthServer {
         return false;
     }
 
+    // Generate Auth URL using the newly created flow client
+    const authorizeUrl = this.flowOAuth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/calendar'],
+      prompt: 'consent'
+    });
+    
+    // Always show the URL in console for easy access
+    process.stderr.write(`\n🔗 Authentication URL: ${authorizeUrl}\n\n`);
+    process.stderr.write(`Or visit: http://localhost:${port}\n\n`);
+    
     if (openBrowser) {
-      // Generate Auth URL using the newly created flow client
-      const authorizeUrl = this.flowOAuth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: ['https://www.googleapis.com/auth/calendar'],
-        prompt: 'consent'
-      });
-      await open(authorizeUrl);
+      try {
+        await open(authorizeUrl);
+        process.stderr.write(`Browser opened automatically. If it didn't open, use the URL above.\n`);
+      } catch (error) {
+        process.stderr.write(`Could not open browser automatically. Please use the URL above.\n`);
+      }
+    } else {
+      process.stderr.write(`Please visit the URL above to complete authentication.\n`);
     }
 
     return true; // Auth flow initiated

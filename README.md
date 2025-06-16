@@ -71,6 +71,17 @@ npm run build
 
 Then add to Claude Desktop config using the local path or by specifying the path with the `GOOGLE_OAUTH_CREDENTIALS` environment variable.
 
+**Option 3: Docker Installation**
+
+```bash
+git clone https://github.com/nspady/google-calendar-mcp.git
+cd google-calendar-mcp
+cp /path/to/your/gcp-oauth.keys.json .
+docker compose up
+```
+
+See the [Docker deployment guide](docs/docker.md) for detailed configuration options including HTTP transport mode.
+
 ### First Run
 
 1. Start Claude Desktop
@@ -126,9 +137,12 @@ Along with the normal capabilities you would expect for a calendar integration y
 
 - [Authentication Setup](docs/authentication.md) - Detailed Google Cloud setup
 - [Advanced Usage](docs/advanced-usage.md) - Multi-account, batch operations
-- [Deployment Guide](docs/deployment.md) - HTTP transport, Docker, remote access
+- [Deployment Guide](docs/deployment.md) - HTTP transport, remote access
+- [Docker Guide](docs/docker.md) - Docker deployment with stdio and HTTP modes
+- [OAuth Verification](docs/oauth-verification.md) - Moving from test to production mode
+- [Architecture](docs/architecture.md) - Technical architecture overview
 - [Development](docs/development.md) - Contributing and testing
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Testing](docs/testing.md) - Unit and integration testing guide
 
 ## Configuration
 

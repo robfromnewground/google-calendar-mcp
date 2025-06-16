@@ -10,17 +10,24 @@ services:
     # Environment configuration via .env file
     env_file: .env
     
+    # Keep container running for exec commands (stdio mode)
+    command: ["tail", "-f", "/dev/null"]
+    
     # OAuth credentials and token storage
     volumes:
       - ./gcp-oauth.keys.json:/app/gcp-oauth.keys.json:ro
       - calendar-tokens:/home/nodejs/.config/google-calendar-mcp
     
-    # stdio mode by default (for Claude Desktop)
-    # For HTTP mode, uncomment the next 3 lines:
-    # ports:
-    #   - "${PORT:-3000}:3000"
-    # environment:
-    #   TRANSPORT: http
+    # Expose ports for HTTP mode and OAuth authentication
+    ports:
+      - "3000:3000"  # HTTP mode MCP server
+      - "3500:3500"  # OAuth authentication
+      - "3501:3501"
+      - "3502:3502"
+      - "3503:3503"
+      - "3504:3504"
+      - "3505:3505"
+    
     
     # Resource limits for production stability
     deploy:

@@ -18,8 +18,14 @@ COPY scripts ./scripts
 COPY src ./src
 COPY tsconfig.json .
 
-# Install dependencies and build via postinstall
-RUN npm ci --production --no-audit --no-fund --silent
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci --no-audit --no-fund --silent
+
+# Build the project
+RUN npm run build
+
+# Remove dev dependencies to reduce image size
+RUN npm prune --production --silent
 
 # Create config directory and set permissions
 RUN mkdir -p /home/nodejs/.config/google-calendar-mcp && \
@@ -32,5 +38,5 @@ USER nodejs
 # Expose port for HTTP mode (optional)
 EXPOSE 3000
 
-# Default command
-CMD ["npm", "start"]
+# Default command - run directly to avoid npm output
+CMD ["node", "build/index.js"]
