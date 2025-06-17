@@ -307,7 +307,7 @@ export class ToolRegistry {
     },
     {
       name: "list-events",
-      description: "List events from one or more calendars. Each event includes a clickable URL for easy viewing in Google Calendar - always present these URLs to users for convenient access.",
+      description: "List events from one or more calendars.",
       schema: ToolSchemas['list-events'],
       handler: ListEventsHandler,
       handlerFunction: async (args: ListEventsInput & { calendarId: string | string[] }) => {
@@ -360,7 +360,7 @@ export class ToolRegistry {
     },
     {
       name: "search-events",
-      description: "Search for events in a calendar by text query. Each result includes a clickable URL for easy viewing in Google Calendar - always present these URLs to users for convenient access.",
+      description: "Search for events in a calendar by text query.",
       schema: ToolSchemas['search-events'],
       handler: SearchEventsHandler
     },
@@ -384,7 +384,7 @@ export class ToolRegistry {
     },
     {
       name: "delete-event",
-      description: "Delete a calendar event",
+      description: "Delete a calendar event.",
       schema: ToolSchemas['delete-event'],
       handler: DeleteEventHandler
     },
@@ -396,7 +396,7 @@ export class ToolRegistry {
     },
     {
       name: "get-current-time",
-      description: "Get current system time and timezone information. Only use when explicitly asked for current time/date, not for event scheduling or calendar operations.",
+      description: "Get current system time and timezone information.",
       schema: ToolSchemas['get-current-time'],
       handler: GetCurrentTimeHandler
     }
