@@ -32,7 +32,7 @@
   "author": "nspady",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=18"
   },
   "scripts": {
     "start": "node build/index.js",
