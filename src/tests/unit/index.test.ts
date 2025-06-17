@@ -193,7 +193,7 @@ Personal (cal2)
         content: [
           {
             type: 'text',
-            text: expect.stringContaining('✅ Event created successfully!'),
+            text: expect.stringContaining('Event created successfully!'),
           },
         ],
       });

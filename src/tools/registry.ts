@@ -276,6 +276,28 @@ interface ToolDefinition {
 
 
 export class ToolRegistry {
+  private static extractSchemaShape(schema: z.ZodType<any>): any {
+    const schemaAny = schema as any;
+    
+    // Handle ZodEffects (schemas with .refine())
+    if (schemaAny._def && schemaAny._def.typeName === 'ZodEffects') {
+      return this.extractSchemaShape(schemaAny._def.schema);
+    }
+    
+    // Handle regular ZodObject
+    if ('shape' in schemaAny) {
+      return schemaAny.shape;
+    }
+    
+    // Handle other nested structures
+    if (schemaAny._def && schemaAny._def.schema) {
+      return this.extractSchemaShape(schemaAny._def.schema);
+    }
+    
+    // Fallback to the original approach
+    return schemaAny._def?.schema?.shape || schemaAny.shape;
+  }
+
   private static tools: ToolDefinition[] = [
     {
       name: "list-calendars",
@@ -404,7 +426,7 @@ export class ToolRegistry {
         tool.name,
         {
           description: tool.description,
-          inputSchema: 'shape' in tool.schema ? tool.schema.shape : (tool.schema as any)._def.schema.shape
+          inputSchema: this.extractSchemaShape(tool.schema)
         },
         async (args: any) => {
           // Validate input using our Zod schema

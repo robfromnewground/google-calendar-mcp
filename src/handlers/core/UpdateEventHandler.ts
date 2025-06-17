@@ -13,7 +13,7 @@ export class UpdateEventHandler extends BaseToolHandler {
         return {
             content: [{
                 type: "text",
-                text: `✅ Event updated successfully! Click the link below to view the changes in Google Calendar:\n\n${formatEventWithUrl(event, validArgs.calendarId)}`,
+                text: 'Event updated successfully! Click the link below to view the changes in Google Calendar:\n\n' + formatEventWithUrl(event, validArgs.calendarId),
             }],
         };
     }

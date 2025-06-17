@@ -13,7 +13,7 @@ export class CreateEventHandler extends BaseToolHandler {
         return {
             content: [{
                 type: "text",
-                text: `✅ Event created successfully! Click the link below to view it in Google Calendar:\n\n${formatEventWithUrl(event, validArgs.calendarId)}`,
+                text: 'Event created successfully! Click the link below to view it in Google Calendar:\n\n' + formatEventWithUrl(event, validArgs.calendarId),
             }],
         };
     }
