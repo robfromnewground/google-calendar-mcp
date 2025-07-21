@@ -106,6 +106,15 @@ export const ToolSchemas = {
     }).describe("Reminder settings for the event").optional(),
     recurrence: z.array(z.string()).optional().describe(
       "Recurrence rules in RFC5545 format (e.g., [\"RRULE:FREQ=WEEKLY;COUNT=5\"])"
+    ),
+    calendarsToCheck: z.array(z.string()).optional().describe(
+      "List of calendar IDs to check for conflicts (defaults to just the target calendar)"
+    ),
+    duplicateSimilarityThreshold: z.number().min(0).max(1).optional().describe(
+      "Threshold for duplicate detection (0-1, default: 0.8). Events with similarity above this are flagged as potential duplicates"
+    ),
+    blockOnHighSimilarity: z.boolean().optional().describe(
+      "If true (default), blocks creation when similarity > 0.9. Set to false to create anyway with warnings"
     )
   }),
   
@@ -165,7 +174,13 @@ export const ToolSchemas = {
         return withTimezone || withoutTimezone;
       }, "Must be ISO 8601 format: '2026-01-01T00:00:00'")
       .describe("Start date for future instances in the ISO 8601 format '2024-01-01T10:00:00'")
-      .optional()
+      .optional(),
+    checkConflicts: z.boolean().optional().describe(
+      "Whether to check for conflicts when updating (default: true when changing time)"
+    ),
+    calendarsToCheck: z.array(z.string()).optional().describe(
+      "List of calendar IDs to check for conflicts (defaults to just the target calendar)"
+    )
   }).refine(
     (data) => {
       // Require originalStartTime when modificationScope is 'thisEventOnly'
