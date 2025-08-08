@@ -62,7 +62,7 @@ Add to your Claude Desktop config file:
         "run", "--rm", "-i",
         "--mount", "type=bind,src=/absolute/path/to/your/gcp-oauth.keys.json,dst=/app/gcp-oauth.keys.json",
         "--mount", "type=volume,src=google-calendar-mcp_calendar-tokens,dst=/home/nodejs/.config/google-calendar-mcp",
-        "google-calendar-mcp"
+        "google-calendar-mcp-calendar-mcp"
       ]
     }
   }
