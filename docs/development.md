@@ -16,6 +16,7 @@ npm run dev auth:test       # Authenticate test account (used for integration te
 ```bash
 npm run dev         # Interactive development menu
 npm run build       # Build project  
+npm run lint        # Type-check with TypeScript (no emit)
 npm test            # Run tests
 ```
 
