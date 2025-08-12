@@ -2,11 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { BaseToolHandler } from "../handlers/core/BaseToolHandler.js";
+import { ALLOWED_EVENT_FIELDS } from "../utils/field-mask-builder.js";
 
 // Import all handlers
 import { ListCalendarsHandler } from "../handlers/core/ListCalendarsHandler.js";
 import { ListEventsHandler } from "../handlers/core/ListEventsHandler.js";
 import { SearchEventsHandler } from "../handlers/core/SearchEventsHandler.js";
+import { GetEventHandler } from "../handlers/core/GetEventHandler.js";
 import { ListColorsHandler } from "../handlers/core/ListColorsHandler.js";
 import { CreateEventHandler } from "../handlers/core/CreateEventHandler.js";
 import { UpdateEventHandler } from "../handlers/core/UpdateEventHandler.js";
@@ -40,7 +42,22 @@ export const ToolSchemas = {
       .optional(),
     timeZone: z.string().optional().describe(
       "Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles). Takes priority over calendar's default timezone. Only used for timezone-naive datetime strings."
-    )
+    ),
+    fields: z.array(z.enum(ALLOWED_EVENT_FIELDS)).optional().describe(
+      "Optional array of additional event fields to retrieve. Available fields are strictly validated. Default fields (id, summary, start, end, status, htmlLink, location, attendees) are always included."
+    ),
+    privateExtendedProperty: z
+      .array(z.string().regex(/^[^=]+=[^=]+$/, "Must be in key=value format"))
+      .optional()
+      .describe(
+        "Filter by private extended properties (key=value). Matches events that have all specified properties."
+      ),
+    sharedExtendedProperty: z
+      .array(z.string().regex(/^[^=]+=[^=]+$/, "Must be in key=value format"))
+      .optional()
+      .describe(
+        "Filter by shared extended properties (key=value). Matches events that have all specified properties."
+      )
   }),
   
   'search-events': z.object({
@@ -64,13 +81,37 @@ export const ToolSchemas = {
       .describe("End time boundary. Preferred: '2024-01-01T23:59:59' (uses timeZone parameter or calendar timezone). Also accepts: '2024-01-01T23:59:59Z' or '2024-01-01T23:59:59-08:00'."),
     timeZone: z.string().optional().describe(
       "Timezone as IANA Time Zone Database name (e.g., America/Los_Angeles). Takes priority over calendar's default timezone. Only used for timezone-naive datetime strings."
-    )
+    ),
+    fields: z.array(z.enum(ALLOWED_EVENT_FIELDS)).optional().describe(
+      "Optional array of additional event fields to retrieve. Available fields are strictly validated. Default fields (id, summary, start, end, status, htmlLink, location, attendees) are always included."
+    ),
+    privateExtendedProperty: z
+      .array(z.string().regex(/^[^=]+=[^=]+$/, "Must be in key=value format"))
+      .optional()
+      .describe(
+        "Filter by private extended properties (key=value). Matches events that have all specified properties."
+      ),
+    sharedExtendedProperty: z
+      .array(z.string().regex(/^[^=]+=[^=]+$/, "Must be in key=value format"))
+      .optional()
+      .describe(
+        "Filter by shared extended properties (key=value). Matches events that have all specified properties."
+      )
   }),
   
+  'get-event': z.object({
+    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    eventId: z.string().describe("ID of the event to retrieve"),
+    fields: z.array(z.enum(ALLOWED_EVENT_FIELDS)).optional().describe(
+      "Optional array of additional event fields to retrieve. Available fields are strictly validated. Default fields (id, summary, start, end, status, htmlLink, location, attendees) are always included."
+    )
+  }),
+
   'list-colors': z.object({}),
   
   'create-event': z.object({
     calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    eventId: z.string().optional().describe("Optional custom event ID (5-1024 characters, alphanumeric and hyphens only). If not provided, Google Calendar will generate one."),
     summary: z.string().describe("Title of the event"),
     description: z.string().optional().describe("Description/notes for the event"),
     start: z.string()
@@ -92,8 +133,13 @@ export const ToolSchemas = {
     ),
     location: z.string().optional().describe("Location of the event"),
     attendees: z.array(z.object({
-      email: z.string().email().describe("Email address of the attendee")
-    })).optional().describe("List of attendee email addresses"),
+      email: z.string().email().describe("Email address of the attendee"),
+      displayName: z.string().optional().describe("Display name of the attendee"),
+      optional: z.boolean().optional().describe("Whether this is an optional attendee"),
+      responseStatus: z.enum(["needsAction", "declined", "tentative", "accepted"]).optional().describe("Attendee's response status"),
+      comment: z.string().optional().describe("Attendee's response comment"),
+      additionalGuests: z.number().int().min(0).optional().describe("Number of additional guests the attendee is bringing")
+    })).optional().describe("List of event attendees with their details"),
     colorId: z.string().optional().describe(
       "Color ID for the event (use list-colors to see available IDs)"
     ),
@@ -106,6 +152,62 @@ export const ToolSchemas = {
     }).describe("Reminder settings for the event").optional(),
     recurrence: z.array(z.string()).optional().describe(
       "Recurrence rules in RFC5545 format (e.g., [\"RRULE:FREQ=WEEKLY;COUNT=5\"])"
+    ),
+    transparency: z.enum(["opaque", "transparent"]).optional().describe(
+      "Whether the event blocks time on the calendar. 'opaque' means busy, 'transparent' means free."
+    ),
+    visibility: z.enum(["default", "public", "private", "confidential"]).optional().describe(
+      "Visibility of the event. Use 'public' for public events, 'private' for private events visible to attendees."
+    ),
+    guestsCanInviteOthers: z.boolean().optional().describe(
+      "Whether attendees can invite others to the event. Default is true."
+    ),
+    guestsCanModify: z.boolean().optional().describe(
+      "Whether attendees can modify the event. Default is false."
+    ),
+    guestsCanSeeOtherGuests: z.boolean().optional().describe(
+      "Whether attendees can see the list of other attendees. Default is true."
+    ),
+    anyoneCanAddSelf: z.boolean().optional().describe(
+      "Whether anyone can add themselves to the event. Default is false."
+    ),
+    sendUpdates: z.enum(["all", "externalOnly", "none"]).optional().describe(
+      "Whether to send notifications about the event creation. 'all' sends to all guests, 'externalOnly' to non-Google Calendar users only, 'none' sends no notifications."
+    ),
+    conferenceData: z.object({
+      createRequest: z.object({
+        requestId: z.string().describe("Client-generated unique ID for this request to ensure idempotency"),
+        conferenceSolutionKey: z.object({
+          type: z.enum(["hangoutsMeet", "eventHangout", "eventNamedHangout", "addOn"]).describe("Conference solution type")
+        }).describe("Conference solution to create")
+      }).describe("Request to generate a new conference")
+    }).optional().describe(
+      "Conference properties for the event. Use createRequest to add a new conference."
+    ),
+    extendedProperties: z.object({
+      private: z.record(z.string()).optional().describe(
+        "Properties private to the application. Keys can have max 44 chars, values max 1024 chars."
+      ),
+      shared: z.record(z.string()).optional().describe(
+        "Properties visible to all attendees. Keys can have max 44 chars, values max 1024 chars."
+      )
+    }).optional().describe(
+      "Extended properties for storing application-specific data. Max 300 properties totaling 32KB."
+    ),
+    attachments: z.array(z.object({
+      fileUrl: z.string().describe("URL of the attached file"),
+      title: z.string().optional().describe("Title of the attachment"),
+      mimeType: z.string().optional().describe("MIME type of the attachment"),
+      iconLink: z.string().optional().describe("URL of the icon for the attachment"),
+      fileId: z.string().optional().describe("ID of the attached file in Google Drive")
+    })).optional().describe(
+      "File attachments for the event. Requires calendar to support attachments."
+    ),
+    source: z.object({
+      url: z.string().describe("URL of the source"),
+      title: z.string().describe("Title of the source")
+    }).optional().describe(
+      "Source of the event, such as a web page or email message."
     )
   }),
   
@@ -259,6 +361,7 @@ export type ToolInputs = {
 export type ListCalendarsInput = ToolInputs['list-calendars'];
 export type ListEventsInput = ToolInputs['list-events'];
 export type SearchEventsInput = ToolInputs['search-events'];
+export type GetEventInput = ToolInputs['get-event'];
 export type ListColorsInput = ToolInputs['list-colors'];
 export type CreateEventInput = ToolInputs['create-event'];
 export type UpdateEventInput = ToolInputs['update-event'];
@@ -355,7 +458,15 @@ export class ToolRegistry {
           }
         }
         
-        return { calendarId: processedCalendarId, timeMin: args.timeMin, timeMax: args.timeMax };
+        return {
+          calendarId: processedCalendarId,
+          timeMin: args.timeMin,
+          timeMax: args.timeMax,
+          timeZone: args.timeZone,
+          fields: args.fields,
+          privateExtendedProperty: args.privateExtendedProperty,
+          sharedExtendedProperty: args.sharedExtendedProperty
+        };
       }
     },
     {
@@ -363,6 +474,12 @@ export class ToolRegistry {
       description: "Search for events in a calendar by text query.",
       schema: ToolSchemas['search-events'],
       handler: SearchEventsHandler
+    },
+    {
+      name: "get-event",
+      description: "Get details of a specific event by ID.",
+      schema: ToolSchemas['get-event'],
+      handler: GetEventHandler
     },
     {
       name: "list-colors",

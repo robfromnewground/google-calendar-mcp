@@ -5,6 +5,7 @@ import { BaseToolHandler } from "./BaseToolHandler.js";
 import { calendar_v3 } from 'googleapis';
 import { formatEventWithDetails } from "../utils.js";
 import { convertToRFC3339 } from "../utils/datetime.js";
+import { buildListFieldMask } from "../../utils/field-mask-builder.js";
 
 export class SearchEventsHandler extends BaseToolHandler {
     async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
@@ -52,6 +53,8 @@ export class SearchEventsHandler extends BaseToolHandler {
             const timeMin = convertToRFC3339(args.timeMin, timezone);
             const timeMax = convertToRFC3339(args.timeMax, timezone);
             
+            const fieldMask = buildListFieldMask(args.fields);
+            
             const response = await calendar.events.list({
                 calendarId: args.calendarId,
                 q: args.query,
@@ -59,6 +62,9 @@ export class SearchEventsHandler extends BaseToolHandler {
                 timeMax,
                 singleEvents: true,
                 orderBy: 'startTime',
+                ...(fieldMask && { fields: fieldMask }),
+                ...(args.privateExtendedProperty && { privateExtendedProperty: args.privateExtendedProperty as any }),
+                ...(args.sharedExtendedProperty && { sharedExtendedProperty: args.sharedExtendedProperty as any })
             });
             return response.data.items || [];
         } catch (error) {
