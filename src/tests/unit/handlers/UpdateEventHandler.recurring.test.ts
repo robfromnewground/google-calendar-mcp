@@ -200,7 +200,7 @@ const ERRORS = {
   NON_RECURRING_SCOPE: 'SCOPE_NOT_APPLICABLE_TO_SINGLE_EVENT'
 };
 
-describe('Enhanced UpdateEventHandler', () => {
+describe('UpdateEventHandler - Recurring Events', () => {
   let handler: EnhancedUpdateEventHandler;
   let mockCalendar: any;
   let mockOAuth2Client: OAuth2Client;

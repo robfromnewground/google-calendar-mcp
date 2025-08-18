@@ -19,6 +19,7 @@ export interface TestEvent {
   originalStartTime?: string;
   futureStartDate?: string;
   calendarId?: string;
+  sendUpdates?: "all" | "externalOnly" | "none";
 }
 
 export interface PerformanceMetric {
