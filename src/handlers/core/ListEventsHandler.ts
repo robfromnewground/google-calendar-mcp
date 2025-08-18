@@ -5,6 +5,7 @@ import { calendar_v3 } from 'googleapis';
 import { formatEventWithDetails } from "../utils.js";
 import { BatchRequestHandler } from "./BatchRequestHandler.js";
 import { convertToRFC3339 } from "../utils/datetime.js";
+import { buildListFieldMask } from "../../utils/field-mask-builder.js";
 
 // Extended event type to include calendar ID for tracking source
 interface ExtendedEvent extends calendar_v3.Schema$Event {
@@ -16,6 +17,9 @@ interface ListEventsArgs {
   timeMin?: string;
   timeMax?: string;
   timeZone?: string;
+  fields?: string[];
+  privateExtendedProperty?: string[];
+  sharedExtendedProperty?: string[];
 }
 
 export class ListEventsHandler extends BaseToolHandler {
@@ -32,7 +36,10 @@ export class ListEventsHandler extends BaseToolHandler {
         const allEvents = await this.fetchEvents(oauth2Client, calendarIds, {
             timeMin: validArgs.timeMin,
             timeMax: validArgs.timeMax,
-            timeZone: validArgs.timeZone
+            timeZone: validArgs.timeZone,
+            fields: validArgs.fields,
+            privateExtendedProperty: validArgs.privateExtendedProperty,
+            sharedExtendedProperty: validArgs.sharedExtendedProperty
         });
         
         if (allEvents.length === 0) {
@@ -79,7 +86,7 @@ export class ListEventsHandler extends BaseToolHandler {
     private async fetchEvents(
         client: OAuth2Client,
         calendarIds: string[],
-        options: { timeMin?: string; timeMax?: string; timeZone?: string }
+        options: { timeMin?: string; timeMax?: string; timeZone?: string; fields?: string[]; privateExtendedProperty?: string[]; sharedExtendedProperty?: string[] }
     ): Promise<ExtendedEvent[]> {
         if (calendarIds.length === 1) {
             return this.fetchSingleCalendarEvents(client, calendarIds[0], options);
@@ -91,7 +98,7 @@ export class ListEventsHandler extends BaseToolHandler {
     private async fetchSingleCalendarEvents(
         client: OAuth2Client,
         calendarId: string,
-        options: { timeMin?: string; timeMax?: string; timeZone?: string }
+        options: { timeMin?: string; timeMax?: string; timeZone?: string; fields?: string[]; privateExtendedProperty?: string[]; sharedExtendedProperty?: string[] }
     ): Promise<ExtendedEvent[]> {
         try {
             const calendar = this.getCalendar(client);
@@ -109,12 +116,17 @@ export class ListEventsHandler extends BaseToolHandler {
                 timeMax = timeMax ? convertToRFC3339(timeMax, timezone) : undefined;
             }
             
+            const fieldMask = buildListFieldMask(options.fields);
+            
             const response = await calendar.events.list({
                 calendarId,
                 timeMin,
                 timeMax,
                 singleEvents: true,
-                orderBy: 'startTime'
+                orderBy: 'startTime',
+                ...(fieldMask && { fields: fieldMask }),
+                ...(options.privateExtendedProperty && { privateExtendedProperty: options.privateExtendedProperty as any }),
+                ...(options.sharedExtendedProperty && { sharedExtendedProperty: options.sharedExtendedProperty as any })
             });
             
             // Add calendarId to events for consistent interface
@@ -130,7 +142,7 @@ export class ListEventsHandler extends BaseToolHandler {
     private async fetchMultipleCalendarEvents(
         client: OAuth2Client,
         calendarIds: string[],
-        options: { timeMin?: string; timeMax?: string; timeZone?: string }
+        options: { timeMin?: string; timeMax?: string; timeZone?: string; fields?: string[]; privateExtendedProperty?: string[]; sharedExtendedProperty?: string[] }
     ): Promise<ExtendedEvent[]> {
         const batchHandler = new BatchRequestHandler(client);
         
@@ -150,7 +162,7 @@ export class ListEventsHandler extends BaseToolHandler {
         return this.sortEventsByStartTime(events);
     }
 
-    private async buildEventsPath(client: OAuth2Client, calendarId: string, options: { timeMin?: string; timeMax?: string; timeZone?: string }): Promise<string> {
+    private async buildEventsPath(client: OAuth2Client, calendarId: string, options: { timeMin?: string; timeMax?: string; timeZone?: string; fields?: string[]; privateExtendedProperty?: string[]; sharedExtendedProperty?: string[] }): Promise<string> {
         // Determine timezone with correct precedence:
         // 1. Explicit timeZone parameter (highest priority)
         // 2. Calendar's default timezone (fallback)
@@ -164,12 +176,21 @@ export class ListEventsHandler extends BaseToolHandler {
             timeMax = timeMax ? convertToRFC3339(timeMax, timezone) : undefined;
         }
         
+        const fieldMask = buildListFieldMask(options.fields);
+        
         const params = new URLSearchParams({
             singleEvents: "true",
             orderBy: "startTime",
-            ...(timeMin && { timeMin }),
-            ...(timeMax && { timeMax })
         });
+        if (timeMin) params.set('timeMin', timeMin);
+        if (timeMax) params.set('timeMax', timeMax);
+        if (fieldMask) params.set('fields', fieldMask);
+        if (options.privateExtendedProperty) {
+            for (const kv of options.privateExtendedProperty) params.append('privateExtendedProperty', kv);
+        }
+        if (options.sharedExtendedProperty) {
+            for (const kv of options.sharedExtendedProperty) params.append('sharedExtendedProperty', kv);
+        }
         
         return `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
     }
