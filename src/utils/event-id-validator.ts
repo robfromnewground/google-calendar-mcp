@@ -13,9 +13,10 @@ export function isValidEventId(eventId: string): boolean {
     return false;
   }
   
-  // Check character constraints (alphanumeric and hyphens only)
-  // Google Calendar allows: a-z, A-Z, 0-9, and -
-  const validPattern = /^[a-zA-Z0-9-]+$/;
+  // Check character constraints (base32hex encoding)
+  // Google Calendar allows only: lowercase letters a-v and digits 0-9
+  // Based on RFC2938 section 3.1.2
+  const validPattern = /^[a-v0-9]+$/;
   return validPattern.test(eventId);
 }
 
@@ -36,8 +37,8 @@ export function validateEventId(eventId: string): void {
       errors.push("must not exceed 1024 characters");
     }
     
-    if (!/^[a-zA-Z0-9-]+$/.test(eventId)) {
-      errors.push("can only contain letters, numbers, and hyphens");
+    if (!/^[a-v0-9]+$/.test(eventId)) {
+      errors.push("can only contain lowercase letters a-v and digits 0-9 (base32hex encoding)");
     }
     
     throw new Error(`Invalid event ID: ${errors.join(", ")}`);
@@ -46,28 +47,41 @@ export function validateEventId(eventId: string): void {
 
 /**
  * Sanitizes a string to make it a valid event ID
- * Replaces invalid characters with hyphens and ensures length constraints
+ * Converts to base32hex encoding (lowercase a-v and 0-9 only)
  * @param input The input string to sanitize
  * @returns A valid event ID
  */
 export function sanitizeEventId(input: string): string {
-  // Replace invalid characters with hyphens
-  let sanitized = input.replace(/[^a-zA-Z0-9-]/g, '-');
+  // Convert to lowercase first
+  let sanitized = input.toLowerCase();
   
-  // Remove consecutive hyphens
-  sanitized = sanitized.replace(/-+/g, '-');
+  // Replace invalid characters:
+  // - Keep digits 0-9 as is
+  // - Map letters w-z to a-d (shift back)
+  // - Map other characters to valid base32hex characters
+  sanitized = sanitized.replace(/[^a-v0-9]/g, (char) => {
+    // Map w-z to a-d
+    if (char >= 'w' && char <= 'z') {
+      return String.fromCharCode(char.charCodeAt(0) - 22); // w->a, x->b, y->c, z->d
+    }
+    // Map any other character to a default valid character
+    return '';
+  });
   
-  // Remove leading/trailing hyphens
-  sanitized = sanitized.replace(/^-+|-+$/g, '');
+  // Remove any empty spaces from the mapping
+  sanitized = sanitized.replace(/\s+/g, '');
   
   // Ensure minimum length
   if (sanitized.length < 5) {
-    // If sanitized is empty or too short, generate a default
+    // Generate a base32hex timestamp
+    const timestamp = Date.now().toString(32).replace(/[w-z]/g, (c) => 
+      String.fromCharCode(c.charCodeAt(0) - 22)
+    );
+    
     if (sanitized.length === 0) {
-      sanitized = `event-${Date.now()}`;
+      sanitized = `event${timestamp}`.substring(0, 26); // Match Google's 26-char format
     } else {
-      // Pad with timestamp to ensure uniqueness
-      sanitized = `${sanitized}-${Date.now()}`.slice(0, 1024);
+      sanitized = `${sanitized}${timestamp}`.substring(0, 26);
     }
   }
   
@@ -76,9 +90,17 @@ export function sanitizeEventId(input: string): string {
     sanitized = sanitized.slice(0, 1024);
   }
   
+  // Final validation - ensure only valid characters
+  sanitized = sanitized.replace(/[^a-v0-9]/g, '');
+  
   // If still too short after all operations, generate a default
   if (sanitized.length < 5) {
-    sanitized = `event-${Date.now()}`;
+    // Generate a valid base32hex ID
+    const now = Date.now();
+    const base32hex = now.toString(32).replace(/[w-z]/g, (c) => 
+      String.fromCharCode(c.charCodeAt(0) - 22)
+    );
+    sanitized = `ev${base32hex}`.substring(0, 26);
   }
   
   return sanitized;

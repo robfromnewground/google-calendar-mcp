@@ -111,7 +111,7 @@ export const ToolSchemas = {
   
   'create-event': z.object({
     calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
-    eventId: z.string().optional().describe("Optional custom event ID (5-1024 characters, alphanumeric and hyphens only). If not provided, Google Calendar will generate one."),
+    eventId: z.string().optional().describe("Optional custom event ID (5-1024 characters, base32hex encoding: lowercase letters a-v and digits 0-9 only). If not provided, Google Calendar will generate one."),
     summary: z.string().describe("Title of the event"),
     description: z.string().optional().describe("Description/notes for the event"),
     start: z.string()

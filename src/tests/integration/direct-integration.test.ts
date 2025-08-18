@@ -119,7 +119,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         testFactory.endTimer('list-tools', startTime, true);
         
         expect(tools.tools).toBeDefined();
-        expect(tools.tools.length).toBe(9);
+        expect(tools.tools.length).toBe(10);
         
         const toolNames = tools.tools.map(t => t.name);
         expect(toolNames).toContain('get-current-time');
@@ -131,6 +131,7 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         expect(toolNames).toContain('update-event');
         expect(toolNames).toContain('delete-event');
         expect(toolNames).toContain('get-freebusy');
+        expect(toolNames).toContain('get-event');
       } catch (error) {
         testFactory.endTimer('list-tools', startTime, false, String(error));
         throw error;
@@ -227,6 +228,103 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
         expect(response.currentTime).not.toHaveProperty('note');
       } catch (error) {
         testFactory.endTimer('get-current-time-with-timezone', startTime, false, String(error));
+        throw error;
+      }
+    });
+
+    it('should get event by ID', async () => {
+      const startTime = testFactory.startTimer('get-event');
+      
+      try {
+        // First create an event
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Test Get Event By ID'
+        });
+        
+        const eventId = await createTestEvent(eventData);
+        createdEventIds.push(eventId);
+        
+        // Now get the event by ID
+        const result = await client.callTool({
+          name: 'get-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            eventId: eventId
+          }
+        });
+        
+        testFactory.endTimer('get-event', startTime, true);
+        
+        expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+        const responseText = (result.content as any)[0].text;
+        expect(responseText).toContain('Event Details:');
+        expect(responseText).toContain(eventData.summary);
+        expect(responseText).toContain(eventId);
+      } catch (error) {
+        testFactory.endTimer('get-event', startTime, false, String(error));
+        throw error;
+      }
+    });
+
+    it('should return not found for non-existent event ID', async () => {
+      const startTime = testFactory.startTimer('get-event-not-found');
+      
+      try {
+        const result = await client.callTool({
+          name: 'get-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            eventId: 'non-existent-event-id-12345'
+          }
+        });
+        
+        testFactory.endTimer('get-event-not-found', startTime, true);
+        
+        expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+        const responseText = (result.content as any)[0].text;
+        expect(responseText).toContain('not found');
+      } catch (error) {
+        testFactory.endTimer('get-event-not-found', startTime, false, String(error));
+        throw error;
+      }
+    });
+
+    it('should get event with specific fields', async () => {
+      const startTime = testFactory.startTimer('get-event-with-fields');
+      
+      try {
+        // First create an event with extended data
+        const eventData = TestDataFactory.createColoredEvent('9', {
+          summary: 'Test Get Event With Fields',
+          description: 'Testing field filtering',
+          location: 'Test Location'
+        });
+        
+        const eventId = await createTestEvent(eventData);
+        createdEventIds.push(eventId);
+        
+        // Get event with specific fields
+        const result = await client.callTool({
+          name: 'get-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            eventId: eventId,
+            fields: ['colorId', 'description', 'location', 'created', 'updated']
+          }
+        });
+        
+        testFactory.endTimer('get-event-with-fields', startTime, true);
+        
+        expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+        const responseText = (result.content as any)[0].text;
+        expect(responseText).toContain('Event Details:');
+        expect(responseText).toContain(eventData.summary);
+        expect(responseText).toContain(eventData.description!);
+        expect(responseText).toContain(eventData.location!);
+        // Color information may not be included when specific fields are requested
+        // Just verify the event was retrieved with the requested fields
+      } catch (error) {
+        testFactory.endTimer('get-event-with-fields', startTime, false, String(error));
         throw error;
       }
     });
@@ -688,6 +786,234 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
           throw error;
         }
       });
+
+      it('should list events with specific fields', async () => {
+        // Create an event with various fields
+        const eventData = TestDataFactory.createEventWithAttendees({
+          summary: 'Integration Test - Field Filtering',
+          description: 'Testing field filtering in list-events',
+          location: 'Conference Room A'
+        });
+        
+        const eventId = await createTestEvent(eventData);
+        createdEventIds.push(eventId);
+        
+        const startTime = testFactory.startTimer('list-events-with-fields');
+        
+        try {
+          const timeRanges = TestDataFactory.getTimeRanges();
+          const result = await client.callTool({
+            name: 'list-events',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              timeMin: timeRanges.nextWeek.timeMin,
+              timeMax: timeRanges.nextWeek.timeMax,
+              fields: ['description', 'location', 'attendees', 'created', 'updated', 'creator', 'organizer']
+            }
+          });
+          
+          testFactory.endTimer('list-events-with-fields', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          const responseText = (result.content as any)[0].text;
+          expect(responseText).toContain(eventId);
+          expect(responseText).toContain(eventData.summary);
+          // The response should include the additional fields we requested
+          expect(responseText).toContain(eventData.description!);
+          expect(responseText).toContain(eventData.location!);
+        } catch (error) {
+          testFactory.endTimer('list-events-with-fields', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should filter events by extended properties', async () => {
+        // Create two events - one with matching properties, one without
+        const matchingEventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Matching Extended Props'
+        });
+        
+        const nonMatchingEventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Non-Matching Extended Props'
+        });
+        
+        // Create event with extended properties
+        const result1 = await client.callTool({
+          name: 'create-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            ...matchingEventData,
+            extendedProperties: {
+              private: {
+                testRun: 'integration-test',
+                environment: 'test'
+              },
+              shared: {
+                visibility: 'team'
+              }
+            }
+          }
+        });
+        
+        const matchingEventId = TestDataFactory.extractEventIdFromResponse(result1);
+        createdEventIds.push(matchingEventId!);
+        
+        // Create event without matching properties
+        const result2 = await client.callTool({
+          name: 'create-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            ...nonMatchingEventData,
+            extendedProperties: {
+              private: {
+                testRun: 'other-test',
+                environment: 'production'
+              }
+            }
+          }
+        });
+        
+        const nonMatchingEventId = TestDataFactory.extractEventIdFromResponse(result2);
+        createdEventIds.push(nonMatchingEventId!);
+        
+        // Wait for events to be searchable
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const startTime = testFactory.startTimer('list-events-extended-properties');
+        
+        try {
+          const timeRanges = TestDataFactory.getTimeRanges();
+          const result = await client.callTool({
+            name: 'list-events',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              timeMin: timeRanges.nextWeek.timeMin,
+              timeMax: timeRanges.nextWeek.timeMax,
+              privateExtendedProperty: ['testRun=integration-test', 'environment=test'],
+              sharedExtendedProperty: ['visibility=team']
+            }
+          });
+          
+          testFactory.endTimer('list-events-extended-properties', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          const responseText = (result.content as any)[0].text;
+          
+          // Should find the matching event
+          expect(responseText).toContain(matchingEventId);
+          expect(responseText).toContain('Matching Extended Props');
+          
+          // Should NOT find the non-matching event
+          expect(responseText).not.toContain(nonMatchingEventId);
+          expect(responseText).not.toContain('Non-Matching Extended Props');
+        } catch (error) {
+          testFactory.endTimer('list-events-extended-properties', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should search events with specific fields', async () => {
+        // Create an event with rich data
+        const eventData = TestDataFactory.createColoredEvent('11', {
+          summary: 'Search Test - Field Filtering Event',
+          description: 'This event tests field filtering in search-events',
+          location: 'Virtual Meeting Room'
+        });
+        
+        const eventId = await createTestEvent(eventData);
+        createdEventIds.push(eventId);
+        
+        // Wait for event to be searchable
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const startTime = testFactory.startTimer('search-events-with-fields');
+        
+        try {
+          const timeRanges = TestDataFactory.getTimeRanges();
+          const result = await client.callTool({
+            name: 'search-events',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              query: 'Field Filtering',
+              timeMin: timeRanges.nextWeek.timeMin,
+              timeMax: timeRanges.nextWeek.timeMax,
+              fields: ['colorId', 'description', 'location', 'created', 'updated', 'htmlLink']
+            }
+          });
+          
+          testFactory.endTimer('search-events-with-fields', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          const responseText = (result.content as any)[0].text;
+          expect(responseText).toContain(eventId);
+          expect(responseText).toContain(eventData.summary);
+          expect(responseText).toContain(eventData.description!);
+          expect(responseText).toContain(eventData.location!);
+          // Color information may not be included when specific fields are requested
+        // Just verify the search found the event with the requested fields
+        } catch (error) {
+          testFactory.endTimer('search-events-with-fields', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should search events filtered by extended properties', async () => {
+        // Create event with searchable content and extended properties
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Search Extended Props Test Event',
+          description: 'This event has extended properties for filtering'
+        });
+        
+        const result = await client.callTool({
+          name: 'create-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            ...eventData,
+            extendedProperties: {
+              private: {
+                searchTest: 'enabled',
+                category: 'integration'
+              },
+              shared: {
+                team: 'qa'
+              }
+            }
+          }
+        });
+        
+        const eventId = TestDataFactory.extractEventIdFromResponse(result);
+        createdEventIds.push(eventId!);
+        
+        // Wait for event to be searchable
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const startTime = testFactory.startTimer('search-events-extended-properties');
+        
+        try {
+          const timeRanges = TestDataFactory.getTimeRanges();
+          const searchResult = await client.callTool({
+            name: 'search-events',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              query: 'Extended Props',
+              timeMin: timeRanges.nextWeek.timeMin,
+              timeMax: timeRanges.nextWeek.timeMax,
+              privateExtendedProperty: ['searchTest=enabled', 'category=integration'],
+              sharedExtendedProperty: ['team=qa']
+            }
+          });
+          
+          testFactory.endTimer('search-events-extended-properties', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(searchResult)).toBe(true);
+          const responseText = (searchResult.content as any)[0].text;
+          expect(responseText).toContain(eventId);
+          expect(responseText).toContain('Search Extended Props Test Event');
+        } catch (error) {
+          testFactory.endTimer('search-events-extended-properties', startTime, false, String(error));
+          throw error;
+        }
+      });
     });
 
     describe('Free/Busy Queries', () => {
@@ -710,6 +1036,316 @@ describe('Google Calendar MCP - Direct Integration Tests', () => {
           expect(TestDataFactory.validateEventResponse(result)).toBe(true);
         } catch (error) {
           testFactory.endTimer('get-freebusy', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with custom event ID', async () => {
+        // Google Calendar event IDs must use base32hex encoding: lowercase a-v and 0-9 only
+        // Generate a valid base32hex ID
+        const timestamp = Date.now().toString(32).replace(/[w-z]/g, (c) => 
+          String.fromCharCode(c.charCodeAt(0) - 22)
+        );
+        const randomPart = Math.random().toString(32).substring(2, 8).replace(/[w-z]/g, (c) => 
+          String.fromCharCode(c.charCodeAt(0) - 22)
+        );
+        const customEventId = `test${timestamp}${randomPart}`.substring(0, 26);
+        
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Custom Event ID'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-custom-id');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              eventId: customEventId,
+              ...eventData
+            }
+          });
+          
+          testFactory.endTimer('create-event-custom-id', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const responseText = (result.content as any)[0].text;
+          expect(responseText).toContain(customEventId);
+          
+          // Clean up
+          createdEventIds.push(customEventId);
+          testFactory.addCreatedEventId(customEventId);
+        } catch (error) {
+          testFactory.endTimer('create-event-custom-id', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should handle duplicate custom event ID error', async () => {
+        // Google Calendar event IDs must use base32hex encoding: lowercase a-v and 0-9 only
+        // Generate a valid base32hex ID
+        const timestamp = Date.now().toString(32).replace(/[w-z]/g, (c) => 
+          String.fromCharCode(c.charCodeAt(0) - 22)
+        );
+        const randomPart = Math.random().toString(32).substring(2, 8).replace(/[w-z]/g, (c) => 
+          String.fromCharCode(c.charCodeAt(0) - 22)
+        );
+        const customEventId = `dup${timestamp}${randomPart}`.substring(0, 26);
+        
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Duplicate ID Test'
+        });
+        
+        // First create an event with custom ID
+        const result1 = await client.callTool({
+          name: 'create-event',
+          arguments: {
+            calendarId: TEST_CALENDAR_ID,
+            eventId: customEventId,
+            ...eventData
+          }
+        });
+        
+        expect(TestDataFactory.validateEventResponse(result1)).toBe(true);
+        createdEventIds.push(customEventId);
+        
+        // Try to create another event with the same ID
+        const startTime = testFactory.startTimer('create-event-duplicate-id');
+        
+        try {
+          const result2 = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              eventId: customEventId,
+              ...eventData
+            }
+          });
+          
+          testFactory.endTimer('create-event-duplicate-id', startTime, true);
+          
+          expect(result2.isError).toBe(true);
+          expect((result2.content as any)[0].text).toContain('already exists');
+        } catch (error) {
+          testFactory.endTimer('create-event-duplicate-id', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with transparency and visibility options', async () => {
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Transparency and Visibility'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-transparency-visibility');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              ...eventData,
+              transparency: 'transparent',
+              visibility: 'private',
+              guestsCanInviteOthers: false,
+              guestsCanModify: true,
+              guestsCanSeeOtherGuests: false
+            }
+          });
+          
+          testFactory.endTimer('create-event-transparency-visibility', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const eventId = TestDataFactory.extractEventIdFromResponse(result);
+          expect(eventId).toBeTruthy();
+          
+          createdEventIds.push(eventId!);
+          testFactory.addCreatedEventId(eventId!);
+        } catch (error) {
+          testFactory.endTimer('create-event-transparency-visibility', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with extended properties', async () => {
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Extended Properties'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-extended-properties');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              ...eventData,
+              extendedProperties: {
+                private: {
+                  projectId: 'proj-123',
+                  customerId: 'cust-456',
+                  category: 'meeting'
+                },
+                shared: {
+                  department: 'engineering',
+                  team: 'backend'
+                }
+              }
+            }
+          });
+          
+          testFactory.endTimer('create-event-extended-properties', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const eventId = TestDataFactory.extractEventIdFromResponse(result);
+          expect(eventId).toBeTruthy();
+          
+          createdEventIds.push(eventId!);
+          testFactory.addCreatedEventId(eventId!);
+          
+          // Verify the event can be found by extended properties
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const searchResult = await client.callTool({
+            name: 'list-events',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              timeMin: eventData.start,
+              timeMax: eventData.end,
+              privateExtendedProperty: ['projectId=proj-123', 'customerId=cust-456']
+            }
+          });
+          
+          expect(TestDataFactory.validateEventResponse(searchResult)).toBe(true);
+          expect((searchResult.content as any)[0].text).toContain(eventId);
+        } catch (error) {
+          testFactory.endTimer('create-event-extended-properties', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with conference data', async () => {
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Conference Event'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-conference');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              ...eventData,
+              conferenceData: {
+                createRequest: {
+                  requestId: `conf-${Date.now()}`,
+                  conferenceSolutionKey: {
+                    type: 'hangoutsMeet'
+                  }
+                }
+              }
+            }
+          });
+          
+          testFactory.endTimer('create-event-conference', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const eventId = TestDataFactory.extractEventIdFromResponse(result);
+          expect(eventId).toBeTruthy();
+          
+          createdEventIds.push(eventId!);
+          testFactory.addCreatedEventId(eventId!);
+        } catch (error) {
+          testFactory.endTimer('create-event-conference', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with source information', async () => {
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Event with Source'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-source');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              ...eventData,
+              source: {
+                url: 'https://example.com/events/123',
+                title: 'Original Event Source'
+              }
+            }
+          });
+          
+          testFactory.endTimer('create-event-source', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const eventId = TestDataFactory.extractEventIdFromResponse(result);
+          expect(eventId).toBeTruthy();
+          
+          createdEventIds.push(eventId!);
+          testFactory.addCreatedEventId(eventId!);
+        } catch (error) {
+          testFactory.endTimer('create-event-source', startTime, false, String(error));
+          throw error;
+        }
+      });
+
+      it('should create event with complex attendee details', async () => {
+        const eventData = TestDataFactory.createSingleEvent({
+          summary: 'Integration Test - Complex Attendees'
+        });
+        
+        const startTime = testFactory.startTimer('create-event-complex-attendees');
+        
+        try {
+          const result = await client.callTool({
+            name: 'create-event',
+            arguments: {
+              calendarId: TEST_CALENDAR_ID,
+              ...eventData,
+              attendees: [
+                {
+                  email: 'required@example.com',
+                  displayName: 'Required Attendee',
+                  optional: false,
+                  responseStatus: 'needsAction',
+                  comment: 'Looking forward to the meeting',
+                  additionalGuests: 2
+                },
+                {
+                  email: 'optional@example.com',
+                  displayName: 'Optional Attendee',
+                  optional: true,
+                  responseStatus: 'tentative'
+                }
+              ],
+              sendUpdates: 'none' // Don't send real emails in tests
+            }
+          });
+          
+          testFactory.endTimer('create-event-complex-attendees', startTime, true);
+          
+          expect(TestDataFactory.validateEventResponse(result)).toBe(true);
+          
+          const eventId = TestDataFactory.extractEventIdFromResponse(result);
+          expect(eventId).toBeTruthy();
+          
+          createdEventIds.push(eventId!);
+          testFactory.addCreatedEventId(eventId!);
+        } catch (error) {
+          testFactory.endTimer('create-event-complex-attendees', startTime, false, String(error));
           throw error;
         }
       });

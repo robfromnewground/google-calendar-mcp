@@ -151,7 +151,7 @@ describe('CreateEventHandler', () => {
   describe('Custom Event IDs', () => {
     it('should create an event with custom ID', async () => {
       const mockCreatedEvent = {
-        id: 'custom-event-2025',
+        id: 'customevent2025',
         summary: 'Test Event',
         start: { dateTime: '2025-01-15T10:00:00Z' },
         end: { dateTime: '2025-01-15T11:00:00Z' },
@@ -162,7 +162,7 @@ describe('CreateEventHandler', () => {
 
       const args = {
         calendarId: 'primary',
-        eventId: 'custom-event-2025',
+        eventId: 'customevent2025',
         summary: 'Test Event',
         start: '2025-01-15T10:00:00',
         end: '2025-01-15T11:00:00'
@@ -173,7 +173,7 @@ describe('CreateEventHandler', () => {
       expect(mockCalendar.events.insert).toHaveBeenCalledWith({
         calendarId: 'primary',
         requestBody: expect.objectContaining({
-          id: 'custom-event-2025',
+          id: 'customevent2025',
           summary: 'Test Event',
           start: { dateTime: '2025-01-15T10:00:00', timeZone: 'America/Los_Angeles' },
           end: { dateTime: '2025-01-15T11:00:00', timeZone: 'America/Los_Angeles' }
@@ -659,7 +659,7 @@ describe('CreateEventHandler', () => {
 
       const args = {
         calendarId: 'primary',
-        eventId: 'custom-complex-event',
+        eventId: 'customcomplexevent',
         summary: 'Complex Event',
         description: 'An event with all features',
         start: '2025-01-15T10:00:00',
@@ -701,7 +701,7 @@ describe('CreateEventHandler', () => {
       const callArgs = mockCalendar.events.insert.mock.calls[0][0];
       
       expect(callArgs.requestBody).toMatchObject({
-        id: 'custom-complex-event',
+        id: 'customcomplexevent',
         summary: 'Complex Event',
         description: 'An event with all features',
         location: 'Conference Room A',
