@@ -213,10 +213,10 @@ export const ToolSchemas = {
       "List of calendar IDs to check for conflicts (defaults to just the target calendar)"
     ),
     duplicateSimilarityThreshold: z.number().min(0).max(1).optional().describe(
-      "Threshold for duplicate detection (0-1, default: 0.8). Events with similarity above this are flagged as potential duplicates"
+      "Threshold for duplicate detection (0-1, default: 0.7). Events with similarity above this are flagged as potential duplicates"
     ),
-    blockOnHighSimilarity: z.boolean().optional().describe(
-      "If true (default), blocks creation when similarity > 0.9. Set to false to create anyway with warnings"
+    allowDuplicates: z.boolean().optional().describe(
+      "If true, allows creation even when exact duplicates are detected (similarity >= 0.95). Default is false which blocks duplicate creation"
     )
   }),
   
