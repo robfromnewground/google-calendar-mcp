@@ -1,7 +1,10 @@
-# Google Calendar MCP Server - Optimized Dockerfile
+# Google Calendar MCP Server - Railway Optimized Dockerfile
 # syntax=docker/dockerfile:1
 
 FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Create app user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -35,8 +38,12 @@ RUN mkdir -p /home/nodejs/.config/google-calendar-mcp && \
 # Switch to non-root user
 USER nodejs
 
-# Expose port for HTTP mode (optional)
-EXPOSE 3000
+# Expose port for Railway (Railway will provide $PORT)
+EXPOSE $PORT
 
-# Default command - run directly to avoid npm output
-CMD ["node", "build/index.js"]
+# Health check for Railway
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-3000}/health || exit 1
+
+# Railway compatible command - use environment variables
+CMD ["sh", "-c", "node build/index.js --transport http --port ${PORT:-3000} --host 0.0.0.0"]
