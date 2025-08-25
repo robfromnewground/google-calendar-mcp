@@ -174,10 +174,15 @@ export class AuthServer {
     // Successfully started server on `port`. Now create the flow-specific OAuth client.
     try {
       const { client_id, client_secret } = await loadCredentials();
+      
+      // Use environment variable for base URL in production, localhost for development
+      const baseUrl = process.env.OAUTH_BASE_URL || `http://localhost:${port}`;
+      const redirectUri = `${baseUrl}/oauth2callback`;
+      
       this.flowOAuth2Client = new OAuth2Client(
         client_id,
         client_secret,
-        `http://localhost:${port}/oauth2callback`
+        redirectUri
       );
     } catch (error) {
         // Could not load credentials, cannot proceed with auth flow

@@ -15,7 +15,7 @@ async function loadCredentialsFromFile(): Promise<OAuthCredentials> {
     return {
       client_id: keys.client_id,
       client_secret: keys.client_secret,
-      redirect_uris: keys.redirect_uris || ['http://localhost:3000/oauth2callback']
+      redirect_uris: keys.redirect_uris || [(process.env.OAUTH_BASE_URL || 'http://localhost:3000') + '/oauth2callback']
     };
   } else {
     throw new Error('Invalid credentials file format. Expected either "installed" object or direct client_id/client_secret fields.');
