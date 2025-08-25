@@ -23,7 +23,18 @@ async function loadCredentialsFromFile(): Promise<OAuthCredentials> {
 }
 
 async function loadCredentialsWithFallback(): Promise<OAuthCredentials> {
-  // Load credentials from file (CLI param, env var, or default path)
+  // Priority 1: Try loading from base64 environment variable (for Railway/cloud deployment)
+  try {
+    const { loadCredentialsFromBase64 } = await import('./utils.js');
+    const base64Credentials = loadCredentialsFromBase64();
+    if (base64Credentials) {
+      return base64Credentials;
+    }
+  } catch (base64Error) {
+    // Continue to file-based loading if base64 fails
+  }
+  
+  // Priority 2: Load credentials from file (CLI param, env var, or default path)
   try {
     return await loadCredentialsFromFile();
   } catch (fileError) {

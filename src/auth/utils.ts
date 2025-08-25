@@ -49,6 +49,38 @@ export function getKeysFilePath(): string {
   return keysPath; // Already absolute from getProjectRoot
 }
 
+// Load OAuth credentials from base64 environment variable (for Railway/cloud deployment)
+export function loadCredentialsFromBase64(): OAuthCredentials | null {
+  const base64Credentials = process.env.GOOGLE_OAUTH_CREDENTIALS_BASE64;
+  if (!base64Credentials) {
+    return null;
+  }
+  
+  try {
+    const jsonString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    const credentials = JSON.parse(jsonString);
+    
+    // Handle both direct format and "web" wrapper format
+    if (credentials.web) {
+      return {
+        client_id: credentials.web.client_id,
+        client_secret: credentials.web.client_secret,
+        redirect_uris: credentials.web.redirect_uris || [(process.env.OAUTH_BASE_URL || 'http://localhost:3000') + '/oauth2callback']
+      };
+    } else if (credentials.client_id && credentials.client_secret) {
+      return {
+        client_id: credentials.client_id,
+        client_secret: credentials.client_secret,
+        redirect_uris: credentials.redirect_uris || [(process.env.OAUTH_BASE_URL || 'http://localhost:3000') + '/oauth2callback']
+      };
+    } else {
+      throw new Error('Invalid credentials format in base64 data');
+    }
+  } catch (error) {
+    throw new Error(`Failed to parse base64 credentials: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
 // Helper to determine if we're currently in test mode
 export function isTestMode(): boolean {
   return getAccountMode() === 'test';
@@ -66,11 +98,15 @@ export function generateCredentialsErrorMessage(): string {
   return `
 OAuth credentials not found. Please provide credentials using one of these methods:
 
-1. Environment variable:
+1. Base64 environment variable (recommended for cloud deployment):
+   Set GOOGLE_OAUTH_CREDENTIALS_BASE64 to your base64-encoded credentials:
+   export GOOGLE_OAUTH_CREDENTIALS_BASE64="eyJ3ZWIiOnsic..."
+
+2. File path environment variable:
    Set GOOGLE_OAUTH_CREDENTIALS to the path of your credentials file:
    export GOOGLE_OAUTH_CREDENTIALS="/path/to/gcp-oauth.keys.json"
 
-2. Default file path:
+3. Default file path:
    Place your gcp-oauth.keys.json file in the package root directory.
 
 Token storage:
