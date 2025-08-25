@@ -38,11 +38,8 @@ RUN mkdir -p /home/nodejs/.config/google-calendar-mcp && \
 # Switch to non-root user
 USER nodejs
 
-# Expose port for Railway (Railway will provide $PORT)
-EXPOSE $PORT
-
-# Health check for Railway
+# Health check for Railway  
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:${PORT:-3000}/health || exit 1
+  CMD curl -f http://localhost:$PORT/health || exit 1
 
 # No CMD - let Railway use its startCommand from railway.json
