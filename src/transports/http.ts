@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import http from "http";
+import { AuthServer } from '../auth/server.js';
 
 export interface HttpTransportConfig {
   port?: number;
@@ -10,10 +11,36 @@ export interface HttpTransportConfig {
 export class HttpTransportHandler {
   private server: McpServer;
   private config: HttpTransportConfig;
+  private authServer?: AuthServer;
 
-  constructor(server: McpServer, config: HttpTransportConfig = {}) {
+  constructor(server: McpServer, config: HttpTransportConfig = {}, authServer?: AuthServer) {
     this.server = server;
     this.config = config;
+    this.authServer = authServer;
+  }
+
+  private async generateAuthUrl(): Promise<string> {
+    if (!this.authServer) {
+      throw new Error('Auth server not available');
+    }
+    
+    // Use the auth server's OAuth client to generate the auth URL
+    const { loadCredentials } = await import('../auth/client.js');
+    const credentials = await loadCredentials();
+    
+    const { OAuth2Client } = await import('google-auth-library');
+    const baseUrl = process.env.OAUTH_BASE_URL || `http://localhost:${this.config.port || 3000}`;
+    const oauth2Client = new OAuth2Client(
+      credentials.client_id,
+      credentials.client_secret,
+      `${baseUrl}/oauth2callback`
+    );
+    
+    return oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/calendar'],
+      prompt: 'consent'
+    });
   }
 
   async connect(): Promise<void> {
@@ -98,6 +125,67 @@ export class HttpTransportHandler {
 
       // Handle auth endpoint for OAuth flow
       if (req.method === 'GET' && req.url === '/auth') {
+        // Try to start OAuth flow if credentials are available
+        if (this.authServer) {
+          try {
+            const authUrl = await this.generateAuthUrl();
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Calendar Authentication</title>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .auth-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+    .success { background: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    .auth-button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px; }
+    .auth-button:hover { background: #3367d6; }
+    .back-button { background: #6c757d; }
+    .back-button:hover { background: #5a6268; }
+    h1 { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔐 Google Calendar Authentication</h1>
+    <p>Authenticate with your Google account to access your calendar</p>
+  </div>
+
+  <div class="success">
+    <strong>✅ OAuth Ready:</strong> The authentication server is properly configured and ready to use.
+  </div>
+
+  <div class="auth-section">
+    <h3>Individual User Authentication</h3>
+    <p>Each user authenticates with their own Google account to access their personal calendar data.</p>
+    <p><strong>Click below to start the authentication process:</strong></p>
+    <a href="${authUrl}" class="auth-button">🔐 Authenticate with Google</a>
+    <br>
+    <a href="/" class="auth-button back-button">← Back to Service Info</a>
+  </div>
+
+  <div style="margin-top: 40px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+    <h3>What happens next:</h3>
+    <ol>
+      <li>Click the "Authenticate with Google" button above</li>
+      <li>Sign in with your Google account</li>
+      <li>Grant permission to access your calendar</li>
+      <li>You'll be redirected back here with access granted</li>
+    </ol>
+  </div>
+</body>
+</html>
+            `);
+            return;
+          } catch (error) {
+            // Fall through to error case below
+          }
+        }
+        
+        // OAuth not configured or failed to generate auth URL
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(`
 <!DOCTYPE html>
@@ -110,8 +198,8 @@ export class HttpTransportHandler {
     .header { text-align: center; margin-bottom: 40px; }
     .auth-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
     .warning { background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; }
-    .auth-button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px; }
-    .auth-button:hover { background: #3367d6; }
+    .auth-button { display: inline-block; background: #6c757d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px; }
+    .auth-button:hover { background: #5a6268; }
     h1 { color: #2c3e50; }
   </style>
 </head>
@@ -137,7 +225,7 @@ export class HttpTransportHandler {
     <h3>For Administrators:</h3>
     <p>To enable OAuth authentication:</p>
     <ol>
-      <li>Ensure GOOGLE_OAUTH_CREDENTIALS environment variable is set</li>
+      <li>Ensure GOOGLE_OAUTH_CREDENTIALS_BASE64 environment variable is set</li>
       <li>Ensure OAUTH_BASE_URL environment variable is set</li>
       <li>The service will automatically start the OAuth server when properly configured</li>
     </ol>
@@ -145,6 +233,108 @@ export class HttpTransportHandler {
 </body>
 </html>
         `);
+        return;
+      }
+
+      // Handle OAuth2 callback
+      if (req.method === 'GET' && req.url?.startsWith('/oauth2callback')) {
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const code = url.searchParams.get('code');
+        
+        if (!code) {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end(`
+<!DOCTYPE html>
+<html>
+<head><title>Authentication Error</title></head>
+<body>
+  <h1>❌ Authentication Error</h1>
+  <p>Authorization code missing from callback.</p>
+  <a href="/auth">Try again</a>
+</body>
+</html>
+          `);
+          return;
+        }
+
+        if (!this.authServer) {
+          res.writeHead(500, { 'Content-Type': 'text/html' });
+          res.end(`
+<!DOCTYPE html>
+<html>
+<head><title>Configuration Error</title></head>
+<body>
+  <h1>⚙️ Configuration Error</h1>
+  <p>OAuth authentication server not available.</p>
+  <a href="/auth">Try again</a>
+</body>
+</html>
+          `);
+          return;
+        }
+
+        try {
+          // Exchange code for tokens
+          const { loadCredentials } = await import('../auth/client.js');
+          const credentials = await loadCredentials();
+          
+          const { OAuth2Client } = await import('google-auth-library');
+          const { TokenManager } = await import('../auth/tokenManager.js');
+          
+          const baseUrl = process.env.OAUTH_BASE_URL || `http://localhost:${this.config.port || 3000}`;
+          const oauth2Client = new OAuth2Client(
+            credentials.client_id,
+            credentials.client_secret,
+            `${baseUrl}/oauth2callback`
+          );
+          
+          const { tokens } = await oauth2Client.getToken(code);
+          
+          // Save tokens using TokenManager
+          const tokenManager = new TokenManager(oauth2Client);
+          await tokenManager.saveTokens(tokens);
+          
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Successful</title>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; text-align: center; }
+    .success { background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .auth-button { display: inline-block; background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px; }
+    .auth-button:hover { background: #218838; }
+    h1 { color: #155724; }
+  </style>
+</head>
+<body>
+  <h1>✅ Authentication Successful!</h1>
+  <div class="success">
+    <p><strong>Your Google account has been successfully connected!</strong></p>
+    <p>You can now access your calendar data through the MCP service.</p>
+    <p>Your authentication tokens have been securely saved.</p>
+  </div>
+  <a href="/" class="auth-button">← Back to Service Info</a>
+  <p><small>You can now close this browser window if you're using this service through an MCP client.</small></p>
+</body>
+</html>
+          `);
+        } catch (error) {
+          res.writeHead(500, { 'Content-Type': 'text/html' });
+          res.end(`
+<!DOCTYPE html>
+<html>
+<head><title>Authentication Failed</title></head>
+<body>
+  <h1>❌ Authentication Failed</h1>
+  <p>Error: ${error instanceof Error ? error.message : 'Unknown error'}</p>
+  <a href="/auth">Try again</a>
+</body>
+</html>
+          `);
+        }
         return;
       }
 

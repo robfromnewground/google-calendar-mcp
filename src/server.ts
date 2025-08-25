@@ -158,7 +158,7 @@ export class GoogleCalendarMcpServer {
           port: this.config.transport.port,
           host: this.config.transport.host
         };
-        const httpHandler = new HttpTransportHandler(this.server, httpConfig);
+        const httpHandler = new HttpTransportHandler(this.server, httpConfig, this.authServer);
         await httpHandler.connect();
         break;
         
