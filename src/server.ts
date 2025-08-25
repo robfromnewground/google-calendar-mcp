@@ -19,9 +19,9 @@ import { ServerConfig } from './config/TransportConfig.js';
 
 export class GoogleCalendarMcpServer {
   private server: McpServer;
-  private oauth2Client!: OAuth2Client;
-  private tokenManager!: TokenManager;
-  private authServer!: AuthServer;
+  private oauth2Client?: OAuth2Client;
+  private tokenManager?: TokenManager;
+  private authServer?: AuthServer;
   private config: ServerConfig;
 
   constructor(config: ServerConfig) {
@@ -33,13 +33,23 @@ export class GoogleCalendarMcpServer {
   }
 
   async initialize(): Promise<void> {
-    // 1. Initialize Authentication (but don't block on it)
-    this.oauth2Client = await initializeOAuth2Client();
-    this.tokenManager = new TokenManager(this.oauth2Client);
-    this.authServer = new AuthServer(this.oauth2Client);
-
-    // 2. Handle startup authentication based on transport type
-    await this.handleStartupAuthentication();
+    // 1. Initialize Authentication (but don't block on it in production)
+    try {
+      this.oauth2Client = await initializeOAuth2Client();
+      this.tokenManager = new TokenManager(this.oauth2Client);
+      this.authServer = new AuthServer(this.oauth2Client);
+      
+      // 2. Handle startup authentication based on transport type
+      await this.handleStartupAuthentication();
+    } catch (error) {
+      // In production HTTP mode, skip OAuth initialization if credentials are missing
+      if (process.env.NODE_ENV === 'production' && this.config.transport.type === 'http') {
+        process.stderr.write(`⚠️  OAuth credentials not found. Service will start but authentication will be required later.\n`);
+        process.stderr.write(`Visit the service URL to set up authentication when ready.\n`);
+      } else {
+        throw error; // Re-throw in development or stdio mode
+      }
+    }
 
     // 3. Set up Modern Tool Definitions
     this.registerTools();
@@ -87,6 +97,14 @@ export class GoogleCalendarMcpServer {
   }
 
   private async ensureAuthenticated(): Promise<void> {
+    // Check if OAuth components are initialized
+    if (!this.tokenManager || !this.oauth2Client || !this.authServer) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        "OAuth credentials not configured. Please set up Google OAuth credentials to use this service."
+      );
+    }
+
     // Check if we already have valid tokens
     if (await this.tokenManager.validateTokens()) {
       return;
