@@ -45,5 +45,4 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:${PORT:-3000}/health || exit 1
 
-# Railway compatible command - use environment variables
-CMD ["sh", "-c", "node build/index.js --transport http --port ${PORT:-3000} --host 0.0.0.0"]
+# No CMD - let Railway use its startCommand from railway.json
