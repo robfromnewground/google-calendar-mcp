@@ -42,12 +42,13 @@ export class GoogleCalendarMcpServer {
       // 2. Handle startup authentication based on transport type
       await this.handleStartupAuthentication();
     } catch (error) {
-      // In production HTTP mode, skip OAuth initialization if credentials are missing
-      if (process.env.NODE_ENV === 'production' && this.config.transport.type === 'http') {
+      // In HTTP mode, skip OAuth initialization if credentials are missing (allow service to start)
+      if (this.config.transport.type === 'http') {
         process.stderr.write(`⚠️  OAuth credentials not found. Service will start but authentication will be required later.\n`);
         process.stderr.write(`Visit the service URL to set up authentication when ready.\n`);
+        process.stderr.write(`Error details: ${error instanceof Error ? error.message : error}\n`);
       } else {
-        throw error; // Re-throw in development or stdio mode
+        throw error; // Re-throw in stdio mode only
       }
     }
 
