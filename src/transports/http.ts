@@ -96,6 +96,58 @@ export class HttpTransportHandler {
         return;
       }
 
+      // Handle auth endpoint for OAuth flow
+      if (req.method === 'GET' && req.url === '/auth') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Calendar Authentication</title>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .auth-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+    .warning { background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    .auth-button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px; }
+    .auth-button:hover { background: #3367d6; }
+    h1 { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔐 Google Calendar Authentication</h1>
+    <p>Authenticate with your Google account to access your calendar</p>
+  </div>
+
+  <div class="warning">
+    <strong>⚠️ OAuth Configuration Needed:</strong> The OAuth authentication server is not currently running. 
+    This requires the service to be configured with Google OAuth credentials and start the authentication server.
+  </div>
+
+  <div class="auth-section">
+    <h3>Individual User Authentication</h3>
+    <p>Each user authenticates with their own Google account to access their personal calendar data.</p>
+    <p><strong>Coming Soon:</strong> OAuth authentication flow will be available once the service is properly configured.</p>
+    <a href="/" class="auth-button">← Back to Service Info</a>
+  </div>
+
+  <div style="margin-top: 40px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+    <h3>For Administrators:</h3>
+    <p>To enable OAuth authentication:</p>
+    <ol>
+      <li>Ensure GOOGLE_OAUTH_CREDENTIALS environment variable is set</li>
+      <li>Ensure OAUTH_BASE_URL environment variable is set</li>
+      <li>The service will automatically start the OAuth server when properly configured</li>
+    </ol>
+  </div>
+</body>
+</html>
+        `);
+        return;
+      }
+
       // Handle root endpoint for browser visits
       if (req.method === 'GET' && req.url === '/') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -171,7 +223,7 @@ export class HttpTransportHandler {
       <li><strong>GET /</strong> - This information page</li>
       <li><strong>GET /health</strong> - Service health check</li>
       <li><strong>POST /</strong> - MCP protocol endpoint</li>
-      <li><strong>Coming Soon:</strong> /auth - OAuth authentication flow</li>
+      <li><strong>GET /auth</strong> - <a href="/auth">OAuth authentication flow</a></li>
     </ul>
   </div>
 
