@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "node build/index.js --transport http --port $PORT --host 0.0.0.0"
+startCommand = "echo \"Railway PORT: $PORT\" && echo \"Environment vars:\" && env | grep -E '^(PORT|NODE_ENV|TRANSPORT)' && node build/index.js --transport http --host 0.0.0.0"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
