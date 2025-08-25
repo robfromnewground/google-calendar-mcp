@@ -96,6 +96,100 @@ export class HttpTransportHandler {
         return;
       }
 
+      // Handle root endpoint for browser visits
+      if (req.method === 'GET' && req.url === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Calendar MCP Server</title>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .status { background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    .warning { background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    .code { background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: 'Monaco', monospace; overflow-x: auto; }
+    .section { margin: 30px 0; }
+    h1 { color: #2c3e50; }
+    h2 { color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+    a { color: #3498db; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🗓️ Google Calendar MCP Server</h1>
+    <p>Model Context Protocol server for Google Calendar integration</p>
+  </div>
+
+  <div class="status">
+    <strong>✅ Service Status:</strong> Running and healthy<br>
+    <strong>🔗 Version:</strong> 1.3.0<br>
+    <strong>📡 Transport:</strong> HTTP Mode<br>
+    <strong>⏰ Started:</strong> ${new Date().toISOString()}
+  </div>
+
+  <div class="warning">
+    <strong>⚠️ OAuth Setup Required:</strong> This service needs Google OAuth credentials to access calendar data. 
+    Until configured, calendar operations will return authentication errors.
+  </div>
+
+  <div class="section">
+    <h2>🔧 How to Use This Service</h2>
+    
+    <h3>For MCP Clients (Claude Desktop, etc.)</h3>
+    <p>Add this configuration to your MCP client:</p>
+    <div class="code">
+{
+  "mcpServers": {
+    "google-calendar": {
+      "command": "node",
+      "args": ["--input", "json"],
+      "env": {
+        "MCP_SERVER_URL": "${req.headers.host}"
+      }
+    }
+  }
+}
+    </div>
+
+    <h3>🔐 OAuth Authentication Setup</h3>
+    <p>To enable calendar access, you need to:</p>
+    <ol>
+      <li>Create Google OAuth credentials in <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+      <li>Enable the Google Calendar API</li>
+      <li>Set environment variables in Railway deployment</li>
+      <li>Users will authenticate via web interface</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>🚀 Available Endpoints</h2>
+    <ul>
+      <li><strong>GET /</strong> - This information page</li>
+      <li><strong>GET /health</strong> - Service health check</li>
+      <li><strong>POST /</strong> - MCP protocol endpoint</li>
+      <li><strong>Coming Soon:</strong> /auth - OAuth authentication flow</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>📚 Documentation</h2>
+    <p>For more information:</p>
+    <ul>
+      <li><a href="https://github.com/robfromnewground/google-calendar-mcp" target="_blank">GitHub Repository</a></li>
+      <li><a href="https://modelcontextprotocol.io" target="_blank">Model Context Protocol</a></li>
+      <li><a href="https://developers.google.com/calendar" target="_blank">Google Calendar API</a></li>
+    </ul>
+  </div>
+</body>
+</html>
+        `);
+        return;
+      }
+
       try {
         await transport.handleRequest(req, res);
       } catch (error) {
